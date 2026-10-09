@@ -125,6 +125,18 @@ fi
 exit 0
 '''
 
+PREUNINST = r'''#!/bin/sh
+# 卸载向导里勾了「同时删除设置」才清掉设置和下载记录；不勾的话保留，重装后接着用
+# 下载好的文件在共享文件夹 KOI-BT 里，这里不碰
+if [ "${wizard_delete_data}" = "true" ]; then
+    VAR_DIR="$(readlink -f "${SYNOPKG_PKGVAR:-/var/packages/koi-bt/var}")"
+    case "${VAR_DIR}" in
+        */koi-bt|*/koi-bt/var) find "${VAR_DIR}" -mindepth 1 -delete ;;
+    esac
+fi
+exit 0
+'''
+
 NOOP = "#!/bin/sh\nexit 0\n"
 
 
@@ -142,6 +154,19 @@ def wizard(lang):
                       if zh else "Downloads are saved to the shared folder <b>KOI-BT</b> (visible in File Station).<br>"
                                  "For faster downloads, forward port 51413 (TCP and UDP) on your router to this NAS.")},
         ]}], ensure_ascii=False).encode()
+
+
+def uninstall_wizard(lang):
+    zh = lang == "chs"
+    return json.dumps([{
+        "step_title": "卸载 KOI BT" if zh else "Uninstall KOI BT",
+        "items": [{"type": "multiselect",
+                   "desc": ("下载好的文件在共享文件夹 KOI-BT 里，卸载不会删除它们。"
+                            if zh else "Your downloaded files in the KOI-BT shared folder are not deleted."),
+                   "subitems": [{"key": "wizard_delete_data", "defaultValue": False,
+                                 "desc": ("同时删除设置和下载任务列表（不勾的话保留，重新安装后接着用）"
+                                          if zh else "Also delete settings and the task list (if unchecked, they are kept for a reinstall)")}]}]}],
+        ensure_ascii=False).encode()
 
 
 def build(arch):
@@ -222,7 +247,7 @@ def build(arch):
         add_bytes(t, "INFO", info_txt)
         add_bytes(t, "package.tgz", pkg_data)
         for name, body in (("start-stop-status", START_STOP), ("postinst", POSTINST), ("preinst", NOOP),
-                           ("preuninst", NOOP), ("postuninst", NOOP), ("preupgrade", NOOP), ("postupgrade", NOOP)):
+                           ("preuninst", PREUNINST), ("postuninst", NOOP), ("preupgrade", NOOP), ("postupgrade", NOOP)):
             add_bytes(t, f"scripts/{name}", body.encode(), 0o755)
         add_bytes(t, "conf/privilege", json.dumps({"defaults": {"run-as": "package"}}).encode())
         add_bytes(t, "conf/resource", json.dumps({
@@ -232,6 +257,9 @@ def build(arch):
         add_bytes(t, "WIZARD_UIFILES/install_uifile", wizard("enu"))
         add_bytes(t, "WIZARD_UIFILES/install_uifile_chs", wizard("chs"))
         add_bytes(t, "WIZARD_UIFILES/install_uifile_enu", wizard("enu"))
+        add_bytes(t, "WIZARD_UIFILES/uninstall_uifile", uninstall_wizard("enu"))
+        add_bytes(t, "WIZARD_UIFILES/uninstall_uifile_chs", uninstall_wizard("chs"))
+        add_bytes(t, "WIZARD_UIFILES/uninstall_uifile_enu", uninstall_wizard("enu"))
         add_bytes(t, "PACKAGE_ICON.PNG", png(64))
         add_bytes(t, "PACKAGE_ICON_256.PNG", png(256))
     shutil.rmtree(work, ignore_errors=True)
