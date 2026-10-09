@@ -49,6 +49,7 @@ jobs:
       - name: 签名更新清单
         env:
           KOI_UPDATE_SIGNING_KEY: ${{ secrets.KOI_UPDATE_SIGNING_KEY }}
+          PYTHONIOENCODING: utf-8
         shell: pwsh
         run: |
           $notes = (git tag -l --format='%(contents)' $env:GITHUB_REF_NAME) -join "`n"
