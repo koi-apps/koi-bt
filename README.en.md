@@ -61,6 +61,16 @@ Requires Windows 10 / 11 (64-bit) and Microsoft Edge WebView2, which ships with 
 > On first launch, allow KOI BT through Windows Firewall so peers can connect to you.
 > Builds are not code-signed yet, so SmartScreen may warn you. Click "More info → Run anyway". We are applying for free open-source code signing.
 
+### NAS / Docker
+
+```bash
+docker run -d --name koi-bt -p 18790:18790 -p 51413:51413 -p 51413:51413/udp \
+  -e KOI_PASSWORD=your-password -v ./config:/config -v /your/downloads:/downloads \
+  ghcr.io/koi-apps/koi-bt:latest
+```
+
+Then open `http://<NAS-IP>:18790`. Synology Container Manager steps: [docs/docker.md](docs/docker.md).
+
 ## FAQ
 
 **Is it slower than Xunlei (Thunder)?**

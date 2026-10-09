@@ -1,0 +1,10 @@
+.git
+.github
+docs
+installer
+tools
+*.md
+!LICENSE
+__pycache__
+dist
+build

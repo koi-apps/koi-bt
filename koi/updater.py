@@ -111,6 +111,9 @@ class Updater:
         self.auto_apply = auto_apply
         if not self.info or self.state["stage"] in ("downloading", "ready"):
             return self.state["stage"] == "ready"
+        if os.environ.get("KOI_DOCKER"):
+            self.state = {"stage": "error", "done": 0, "total": 0, "msg": "Docker 版请拉取新镜像更新：docker pull ghcr.io/koi-apps/koi-bt:latest"}
+            return False
         if not getattr(sys, "frozen", False):
             self.state = {"stage": "error", "done": 0, "total": 0, "msg": "源码运行的版本不能自动更新"}
             return False
@@ -264,7 +267,7 @@ del "%~f0"
 
     def view(self):
         return {"state": self.state, "last_check": self.last_check, "current": C.VERSION,
-                "frozen": bool(getattr(sys, "frozen", False))}
+                "frozen": bool(getattr(sys, "frozen", False)), "docker": bool(os.environ.get("KOI_DOCKER"))}
 
 
 def cleanup_old_files():

@@ -85,6 +85,31 @@ def start_hang_watchdog():
     threading.Thread(target=run, name="hang-watchdog", daemon=True).start()
 
 
+def docker_setup(core):
+    """Docker / NAS：默认打开远程访问（不然连不进网页），下载目录指向 /downloads，密码从环境变量来。"""
+    import secrets
+    s, changed = core.settings, {}
+    dl = os.environ.get("KOI_DOWNLOAD_DIR", "/downloads")
+    if not C.SETTINGS_FILE.exists() or s.get("save_path", "").startswith(str(os.path.expanduser("~"))):
+        changed["save_path"] = dl
+    pw = os.environ.get("KOI_PASSWORD")
+    user = os.environ.get("KOI_USERNAME")
+    if pw:
+        changed["remote_password"] = pw
+    elif not s.get("remote_password"):
+        changed["remote_password"] = secrets.token_urlsafe(9)
+        print("=" * 60)
+        print(f"KOI BT 初始密码 / initial password:  {changed['remote_password']}")
+        print("可以在设置里修改，或用环境变量 KOI_PASSWORD 指定 / change it in Settings or set KOI_PASSWORD")
+        print("=" * 60, flush=True)
+    if user:
+        changed["remote_username"] = user
+    changed["remote_enabled"] = True
+    for k in ("clipboard_watch", "keep_awake", "close_to_tray"):
+        changed[k] = False
+    core.bt.apply_settings(changed)
+
+
 def port_in_use(port):
     with socket.socket() as s:
         return s.connect_ex(("127.0.0.1", port)) == 0
@@ -136,6 +161,8 @@ def main():
     threading.Thread(target=cleanup_old_files, daemon=True).start()
 
     core = Core()
+    if os.environ.get("KOI_DOCKER"):
+        docker_setup(core)
     for a in args:
         if a.startswith("--"):
             continue

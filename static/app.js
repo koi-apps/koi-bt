@@ -280,7 +280,7 @@ function renderUpdate(){
     el.innerHTML=`⚠️ 更新失败：${esc(st.msg)} <button onclick="doUpdate()">重试</button><button class="ghost" onclick="updDismissed=true;renderUpdate()">✕</button>`;
   } else {
     el.innerHTML=`🎉 <b>发现新版本 ${esc(lc.version)}</b><span class="sub small">（当前 v${esc(lc.current)}，${fmtB(lc.size)}）</span><span class="notes">${esc(lc.notes||'')}</span>
-      ${u.frozen?'<button class="primary" onclick="doUpdate()">⚡ 一键更新</button>':'<span class="sub small">源码运行版不能自动更新</span>'}<button class="ghost" onclick="updDismissed=true;renderUpdate()" title="稍后再说">✕</button>`;
+      ${u.frozen?'<button class="primary" onclick="doUpdate()">⚡ 一键更新</button>':u.docker?'<span class="sub small">Docker 版：拉取新镜像后重建容器即可更新</span>':'<span class="sub small">源码运行版不能自动更新</span>'}<button class="ghost" onclick="updDismissed=true;renderUpdate()" title="稍后再说">✕</button>`;
   }
 }
 async function checkUpdate(manual){

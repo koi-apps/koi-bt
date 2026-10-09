@@ -68,6 +68,16 @@
 > 第一次打开时，Windows 防火墙会问是否允许联网，请点「允许」，否则别人连不进你，速度会慢。
 > 目前安装包还没有代码签名，Windows 可能提示「已保护你的电脑」，点「更多信息 → 仍要运行」即可。我们正在申请开源项目的免费代码签名。
 
+### 群晖 / NAS（Docker）
+
+```bash
+docker run -d --name koi-bt -p 18790:18790 -p 51413:51413 -p 51413:51413/udp \
+  -e KOI_PASSWORD=你的密码 -v ./config:/config -v /你的下载目录:/downloads \
+  ghcr.io/koi-apps/koi-bt:latest
+```
+
+浏览器打开 `http://NAS的IP:18790`。群晖 Container Manager 的图文步骤见 [docs/docker.md](docs/docker.md)。
+
 ## 常见问题
 
 **速度比迅雷慢？**
