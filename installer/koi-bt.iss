@@ -22,12 +22,16 @@ UninstallDisplayIcon={app}\{#MyAppExe}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
+; 安装界面语言跟随系统，不弹选择框
+ShowLanguageDialog=auto
+LanguageDetectionMethod=uilanguage
 CloseApplications=yes
 LicenseFile=..\LICENSE
 
 [Languages]
-Name: "chs"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 Name: "en"; MessagesFile: "compiler:Default.isl"
+Name: "chs"; MessagesFile: "ChineseSimplified.isl"
+Name: "cht"; MessagesFile: "ChineseTraditional.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"

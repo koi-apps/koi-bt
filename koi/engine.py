@@ -27,7 +27,7 @@ STATE_TEXT = {
     "checking_files": "校验中",
     "downloading_metadata": "获取种子信息",
     "downloading": "下载中",
-    "finished": "已完成",
+    "finished": "做种中",   # 只下了部分文件、要的都下完了，libtorrent 叫 finished，其实也在给别人传
     "seeding": "做种中",
     "checking_resume_data": "校验中",
 }
@@ -477,7 +477,7 @@ class Engine:
 
     def _seed_info(self, st, ih, paused):
         """正在做种时给界面：还要做多久（按设置的时长 / 分享率，哪个先到算哪个）。"""
-        if not st.is_seeding or paused:
+        if not (st.is_seeding or st.is_finished) or paused:
             return None
         s = self.settings
         if self.meta.get(ih, {}).get("own"):
@@ -654,7 +654,7 @@ class Engine:
         s = self.settings
         for h in self.ses.get_torrents():
             st = h.status()
-            if not st.is_seeding or st.flags & lt.torrent_flags.paused:
+            if not (st.is_seeding or st.is_finished) or st.flags & lt.torrent_flags.paused:
                 continue
             if self.meta.get(str(st.info_hash), {}).get("own"):
                 continue
