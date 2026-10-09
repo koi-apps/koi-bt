@@ -7,3 +7,4 @@ dist/
 latest.json
 *.pem
 tools/i18n_keys.json
+version_info.txt

@@ -84,6 +84,10 @@ Windows build: run `build.bat`. Releases are built by `.github/workflows/release
 
 Contributions are welcome. If you change UI text, run `python tools/build_i18n.py` and add the English string to `static/i18n/en.json`.
 
+## Privacy and code signing
+
+KOI BT collects no personal data; see [PRIVACY.md](PRIVACY.md). Code signing policy: [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md).
+
 ## License
 
 [GPL-3.0](LICENSE)

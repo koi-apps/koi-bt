@@ -110,6 +110,10 @@ Windows 打包：运行 `build.bat`。发布流程在 `.github/workflows/release
 
 欢迎提 Issue 和 Pull Request。改了界面文字后，请运行 `python tools/build_i18n.py`，并在 `static/i18n/en.json` 里补上英文翻译。
 
+## 隐私与代码签名
+
+KOI BT 不收集任何个人数据，详见 [PRIVACY.md](PRIVACY.md)。代码签名政策见 [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md)。
+
 ## 许可证
 
 [GPL-3.0](LICENSE)。你可以自由使用、修改和分发 KOI BT；分发修改后的版本时，也必须以 GPL-3.0 开源。
