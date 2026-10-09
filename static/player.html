@@ -1,0 +1,14 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__NAME__ · KOI 播放</title><link rel="icon" href="/static/favicon.png"><link rel="stylesheet" href="/static/app.css">
+<script src="/static/i18n.js"></script>
+<style>body{background:#000;color:#ddd}video{flex:1;width:100%;min-height:0;background:#000}.bar{display:flex;gap:10px;align-items:center;padding:8px 14px;background:#0a1020;font-size:13px}</style></head>
+<body>
+<div class="bar"><img src="/static/logo.png" width="22" alt=""><b style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">__NAME__</b><span class="grow"></span><span id="st" class="sub"></span>
+  <button onclick="navigator.clipboard.writeText(location.origin+'__SRC__');this.textContent='已复制'">复制播放地址（给 PotPlayer / VLC）</button></div>
+<video id="v" src="__SRC__" controls autoplay></video>
+<script>
+const v=document.getElementById('v'),st=document.getElementById('st');
+v.addEventListener('waiting',()=>st.textContent='缓冲中…（正在优先下载这一段）');
+v.addEventListener('playing',()=>st.textContent='边下边播中');
+v.addEventListener('error',()=>{st.innerHTML='<span class="bad">浏览器播不了这个格式（常见于 HEVC / AVI / RMVB）。点右边按钮复制地址，用 PotPlayer 或 VLC 打开就行</span>'});
+</script></body></html>

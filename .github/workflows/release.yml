@@ -1,0 +1,73 @@
+# 打 tag（例如 v1.4.0）就自动打包发布：便携版 zip + 安装包 + 签名过的更新清单 latest.json
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: 安装依赖
+        run: python -m pip install -r requirements.txt
+
+      - name: 读版本号并核对 tag
+        id: ver
+        shell: pwsh
+        run: |
+          $v = (Select-String koi/config.py -Pattern '^VERSION = "(.+)"').Matches[0].Groups[1].Value
+          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -ne "v$v") { throw "tag $env:GITHUB_REF_NAME 和 config.py 里的版本 $v 对不上" }
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: 打包
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --windowed --name "KOI BT" --icon koi.ico `
+            --add-data "static;static" --add-data "browser_extension;browser_extension" `
+            --collect-all libtorrent --collect-submodules webview --hidden-import pystray._win32 main.py
+          Copy-Item LICENSE "dist/KOI BT/LICENSE.txt"
+          Compress-Archive -Path "dist/KOI BT/*" -DestinationPath "dist/KOI-BT-${{ steps.ver.outputs.version }}-portable.zip"
+
+      - name: 安装包（Inno Setup）
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=${{ steps.ver.outputs.version }}" installer\koi-bt.iss
+
+      - name: 签名更新清单
+        env:
+          KOI_UPDATE_SIGNING_KEY: ${{ secrets.KOI_UPDATE_SIGNING_KEY }}
+        shell: pwsh
+        run: |
+          $notes = (git tag -l --format='%(contents)' $env:GITHUB_REF_NAME) -join "`n"
+          python tools/release_ci.py "${{ steps.ver.outputs.version }}" "dist/KOI-BT-${{ steps.ver.outputs.version }}-portable.zip" "${{ github.repository }}" "$notes"
+
+      - name: SHA-256
+        shell: pwsh
+        run: |
+          Get-ChildItem dist/*.zip, dist/*.exe | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_ -Algorithm SHA256).Hash.ToLower(), $_.Name } | Out-File -Encoding utf8 dist/SHA256SUMS.txt
+          Get-Content dist/SHA256SUMS.txt
+
+      - name: 发布到 Releases
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/KOI-BT-*-portable.zip
+            dist/KOI-BT-*-setup.exe
+            dist/SHA256SUMS.txt
+            latest.json
+          fail_on_unmatched_files: false
+          generate_release_notes: true

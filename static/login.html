@@ -1,0 +1,14 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>登录 · KOI BT</title><link rel="icon" href="/static/favicon.png"><link rel="stylesheet" href="/static/app.css">
+<script src="/static/i18n.js"></script></head>
+<body style="align-items:center;justify-content:center">
+<form class="dlg" style="width:340px;align-items:center;text-align:center" onsubmit="go(event)">
+  <img src="/static/logo.png" width="80" alt=""><h3 style="justify-content:center">KOI BT</h3>
+  <input id="pw" type="password" placeholder="访问密码" autofocus>
+  <div id="err" class="bad small" style="margin-top:8px"></div>
+  <button class="primary" style="width:100%;margin-top:12px">进入</button>
+</form>
+<script>
+async function go(e){e.preventDefault();const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.getElementById('pw').value})});
+if(r.ok)location.href='/';else document.getElementById('err').textContent='密码不对'}
+</script></body></html>

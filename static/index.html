@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KOI BT</title>
+<link rel="icon" href="/static/favicon.png">
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/i18n.js"></script>
+</head>
+<body>
+<header>
+  <div class="logo"><img src="/static/logo.png" alt="">KOI BT</div>
+  <div class="tabs" id="tabs">
+    <button class="tab on" data-f="all">全部 <span id="c-all"></span></button>
+    <button class="tab" data-f="dl">下载中 <span id="c-dl"></span></button>
+    <button class="tab" data-f="done">已完成 <span id="c-done"></span></button>
+    <button class="tab" data-f="bad" title="线上找不到完整文件、可能下不完的任务">资源不足 <span id="c-bad"></span></button>
+    <button class="tab" data-f="http">直链下载 <span id="c-http"></span></button>
+  </div>
+  <select id="catFilter" style="width:auto" title="按分类筛选"><option value="">全部分类</option></select>
+  <div class="grow"></div>
+  <input class="search" id="q" placeholder="🔍 搜索名字">
+  <button onclick="openRss()" title="RSS 订阅自动下载">📡 订阅</button>
+  <button onclick="openCreate()" class="hide-m" title="把自己的文件做成种子分享">🧩 做种子</button>
+  <button onclick="openSettings()">⚙️ 设置</button>
+</header>
+
+<div class="toolbar">
+  <button class="primary" onclick="openAdd()">＋ 添加下载</button>
+  <button id="b-resume" onclick="act('resume')" disabled>▶ 开始</button>
+  <button id="b-pause" onclick="act('pause')" disabled>⏸ 暂停</button>
+  <button id="b-del" class="danger" onclick="askRemove()" disabled>🗑 删除</button>
+  <span class="sep"></span>
+  <button id="b-up" onclick="act('up')" disabled title="排队往前">⬆</button>
+  <button id="b-down" onclick="act('down')" disabled title="排队往后">⬇</button>
+  <span class="sep"></span>
+  <button onclick="allAct('resume')" class="hide-m">全部开始</button>
+  <button onclick="allAct('pause')" class="hide-m">全部暂停</button>
+  <button id="b-alt" onclick="toggleAlt()" title="一键切换到备用限速，玩游戏、开会时用">🐢 乌龟模式</button>
+  <div class="grow"></div>
+  <canvas id="spark" title="最近 2 分钟速度"></canvas>
+</div>
+
+<div id="upd" class="updbar" style="display:none"></div>
+<main id="list"></main>
+
+<footer>
+  <span>⬇ <b id="s-down">0 B/s</b></span>
+  <span>⬆ <b id="s-up">0 B/s</b></span>
+  <span id="s-port"></span>
+  <span id="s-dht"></span>
+  <span id="s-ban"></span>
+  <span class="grow"></span>
+  <span>全部下完后：<select id="afterAll" onchange="saveOne('after_all_done',this.value)">
+    <option value="none">不做什么</option><option value="sleep">睡眠</option><option value="shutdown">关机</option></select></span>
+  <a href="#" id="s-ver" onclick="checkUpdate(true);return false" title="点击检查更新"></a>
+</footer>
+
+<!-- 添加 -->
+<div class="mask" id="m-add"><div class="dlg">
+  <h3>添加下载</h3>
+  <label class="l">链接（一行一个）：磁力链、网页直链、迅雷 thunder:// 都行</label>
+  <textarea id="a-links" rows="5" oninput="updateAddSummary()" placeholder="magnet:?xt=urn:btih:...&#10;https://example.com/file.zip&#10;thunder://..."></textarea>
+  <div class="drop" id="a-drop">＋ 选择 .torrent 种子文件（可以多选），或者直接拖进来</div>
+  <input type="file" id="a-file" accept=".torrent" multiple hidden>
+  <div id="a-preview"></div>
+  <div class="two">
+    <div><label class="l">保存到</label><input id="a-path" class="pathpick" data-kind="folder" onchange="refreshDisk()"></div>
+    <div><label class="l">分类</label><select id="a-cat"><option value="">无</option></select></div>
+  </div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap">
+    <label class="chk"><input type="checkbox" id="a-select"> 磁力链拿到文件列表后先让我选要哪些</label>
+    <label class="chk"><input type="checkbox" id="a-paused"> 添加后先暂停</label>
+  </div>
+  <div class="btns" style="align-items:center"><span id="a-sum" class="small" style="margin-right:auto"></span><button onclick="closeM('m-add')">取消</button><button class="primary" onclick="doAdd()">开始下载</button></div>
+</div></div>
+
+<!-- 删除 -->
+<div class="mask" id="m-del"><div class="dlg">
+  <h3>删除任务</h3>
+  <p id="d-text"></p>
+  <label class="chk"><input type="checkbox" id="d-files"> 同时删除已下载的文件</label>
+  <div class="btns"><button onclick="closeM('m-del')">取消</button><button class="primary" style="background:var(--red)" onclick="doRemove()">删除</button></div>
+</div></div>
+
+<!-- 选文件（磁力链拿到信息后） -->
+<div class="mask" id="m-select"><div class="dlg" style="width:760px">
+  <h3>📂 选择要下载的文件</h3>
+  <div class="sub small" id="sel-name"></div>
+  <div id="sel-picker"></div>
+  <div class="btns"><button onclick="closeM('m-select')">稍后再选</button><button class="primary" onclick="confirmSelect()">开始下载选中的</button></div>
+</div></div>
+
+<!-- 详情 -->
+<div class="mask" id="m-det"><div class="dlg wide">
+  <h3><span id="det-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span><span class="grow"></span><button class="ghost" onclick="closeM('m-det')">✕</button></h3>
+  <div class="dtabs" id="det-tabs">
+    <button class="dtab on" data-t="info">概况</button>
+    <button class="dtab" data-t="files">文件</button>
+    <button class="dtab" data-t="diag">🩺 诊断</button>
+    <button class="dtab" data-t="peers">连接的人</button>
+    <button class="dtab" data-t="trackers">Tracker</button>
+    <button class="dtab" data-t="speed">速度曲线</button>
+  </div>
+  <div class="dbody" id="det-body"></div>
+</div></div>
+
+<!-- 设置 -->
+<div class="mask" id="m-set"><div class="dlg" style="width:720px;height:min(660px,90vh)">
+  <h3>设置</h3>
+  <div class="dtabs" id="set-tabs">
+    <button class="dtab on" data-s="gen">常规</button>
+    <button class="dtab" data-s="speed">速度</button>
+    <button class="dtab" data-s="conn">连接</button>
+    <button class="dtab" data-s="seed">做种</button>
+    <button class="dtab" data-s="leech">🛡 吸血屏蔽</button>
+    <button class="dtab" data-s="cat">分类</button>
+    <button class="dtab" data-s="remote">远程 / 接入</button>
+  </div>
+  <div class="dbody">
+  <div class="sec on" data-s="gen">
+    <label class="l">语言 / Language</label>
+    <select id="st-language" class="notr" style="max-width:260px"><option value="auto">自动 / Auto</option><option value="zh-CN">简体中文</option><option value="zh-TW">繁體中文</option><option value="en">English</option></select>
+    <label class="l">默认保存位置</label><input id="st-save_path" class="pathpick" data-kind="folder">
+    <label class="l">下完后移动到（留空 = 不移动；有分类时会放进分类同名子文件夹）</label><input id="st-move_done_to" class="pathpick" data-kind="folder">
+    <label class="l">监视文件夹（丢进去的 .torrent 自动添加，留空 = 关闭）</label><input id="st-watch_dir" class="pathpick" data-kind="folder">
+    <label class="chk"><input type="checkbox" id="st-select_files_on_add"> 磁力链默认先选文件再下载</label>
+    <label class="chk"><input type="checkbox" id="st-clipboard_watch"> 监听剪贴板：复制磁力链 / 下载链接后自动弹出</label>
+    <label class="chk"><input type="checkbox" id="st-notify_done"> 下载完成时弹系统通知</label>
+    <label class="chk"><input type="checkbox" id="st-keep_awake"> 有任务在下载时不让电脑睡眠</label>
+    <label class="chk"><input type="checkbox" id="st-close_to_tray"> 点关闭时缩到右下角托盘（不退出）</label>
+    <h4 style="margin:18px 0 4px">版本与更新</h4>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span>当前版本 <b id="cur-ver"></b></span><button onclick="checkUpdate(true)">🔄 检查更新</button><span id="upd-msg" class="sub small"></span></div>
+    <label class="chk"><input type="checkbox" id="st-auto_update_check"> 自动检查新版本（每 6 小时一次，有新版本会提示，不会自己装）</label>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="associate()">🔗 设为默认下载器（磁力链 / 种子 / 迅雷链接）</button>
+      <button onclick="api('/api/cancel_shutdown',{});toast('已取消关机')">取消定时关机</button>
+    </div>
+  </div>
+  <div class="sec" data-s="speed">
+    <div class="two">
+      <div><label class="l">下载限速 KB/s（0 = 不限）</label><input id="st-download_limit_kb" type="number" min="0"></div>
+      <div><label class="l">上传限速 KB/s（0 = 不限）</label><input id="st-upload_limit_kb" type="number" min="0"></div>
+    </div>
+    <h4 style="margin:18px 0 0">🐢 乌龟模式（备用限速）</h4>
+    <div class="two">
+      <div><label class="l">下载 KB/s</label><input id="st-alt_download_limit_kb" type="number" min="0"></div>
+      <div><label class="l">上传 KB/s</label><input id="st-alt_upload_limit_kb" type="number" min="0"></div>
+    </div>
+    <label class="chk"><input type="checkbox" id="st-schedule_enabled"> 按时段自动开启乌龟模式</label>
+    <div class="two"><div><label class="l">从</label><input id="st-schedule_from" type="time"></div><div><label class="l">到</label><input id="st-schedule_to" type="time"></div></div>
+    <div id="days" style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap"></div>
+    <label class="l">网页直链默认线程数</label><input id="st-http_threads" type="number" min="1" max="64">
+  </div>
+  <div class="sec" data-s="conn">
+    <div class="three">
+      <div><label class="l">监听端口</label><input id="st-listen_port" type="number" min="1024" max="65535"></div>
+      <div><label class="l">最大连接数</label><input id="st-max_connections" type="number" min="50"></div>
+      <div><label class="l">同时下载几个</label><input id="st-max_active_downloads" type="number" min="1"></div>
+    </div>
+    <label class="l">加密</label>
+    <select id="st-encryption"><option value="prefer">优先加密（推荐，防运营商识别限速）</option><option value="require">强制加密（连的人会变少）</option><option value="disable">不加密</option></select>
+    <label class="l">绑定网卡 IP（挂 VPN 时填 VPN 的 IP，VPN 断了就不会用真实 IP 下载；留空 = 不绑定）</label><input id="st-bind_interface" placeholder="例如 10.8.0.2">
+    <label class="chk"><input type="checkbox" id="st-auto_trackers"> 自动加入公开 tracker 列表（私有种子自动跳过）</label>
+    <label class="l">tracker 列表地址</label><input id="st-tracker_url">
+    <div style="margin-top:8px"><button onclick="refreshTrk()">🔄 立即更新 tracker 列表</button> <span id="trkn" class="sub small"></span></div>
+  </div>
+  <div class="sec" data-s="seed">
+    <label class="l">下载完成后，继续做种多久？</label>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <select id="seed-preset" style="width:auto" onchange="seedPreset()">
+        <option value="off">不做种，下完就停</option><option value="10">10 分钟（默认）</option><option value="30">30 分钟</option>
+        <option value="60">1 小时</option><option value="180">3 小时</option><option value="1440">1 天</option>
+        <option value="forever">一直做种</option><option value="custom">自定义…</option></select>
+      <span id="seed-custom" style="display:none"><input id="seed-min" type="number" min="1" style="width:100px"> 分钟</span>
+    </div>
+    <label class="l">分享率达到多少也停（0 = 不看分享率）</label><input id="st-ratio_limit" type="number" step="0.1" min="0" style="max-width:200px">
+    <div class="hint">做种 = 下完后继续把文件传给别人。做一会儿种，别的用户更愿意给你传，下次下载更快。<br>两个条件哪个先到就停。分享率 = 你上传的量 ÷ 你下载的量，1.0 就是传出去的和自己下的一样多。<br>你自己用「做种子」分享出去的文件不受这里限制，会一直做种。</div>
+  </div>
+  <div class="sec" data-s="leech">
+    <label class="chk"><input type="checkbox" id="st-anti_leech"> 自动屏蔽吸血客户端（迅雷、QQ旋风、百度、影音先锋等只下不传的）</label>
+    <div class="hint">除了按客户端名字认，还会按行为判断：从你这里拿了 20MB 以上、自己却一直报告进度 0、一点都不回传的，也会被拉黑。</div>
+    <label class="l">额外屏蔽的客户端关键字（逗号分隔）</label><input id="st-ban_list_extra" placeholder="例如 libtorrent (Rasterbar) 0.16, Unknown">
+    <label class="l">IP 黑名单（一行一个，支持 1.2.3.4、1.2.3.0/24、1.2.3.4-1.2.3.9）</label><textarea id="st-ip_blocklist"></textarea>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:10px"><b>本次已屏蔽 <span id="bann">0</span> 个</b><button onclick="api('/api/unban',{});toast('已全部解封')">全部解封</button></div>
+    <div class="ftree"><table class="t" id="ban-table"></table></div>
+  </div>
+  <div class="sec" data-s="cat">
+    <div class="hint">分类 = 不同类型的东西自动存到不同文件夹。比如「电影」存 D:\电影，「剧集」存 D:\剧集。添加任务和 RSS 规则时可以选分类。</div>
+    <div id="cat-list" style="margin-top:10px"></div>
+    <div class="two" style="margin-top:10px"><input id="cat-name" placeholder="分类名，例如 电影"><input id="cat-path" class="pathpick" data-kind="folder" placeholder="保存位置，例如 D:\电影"></div>
+    <div style="margin-top:8px"><button onclick="addCat()">＋ 添加分类</button></div>
+  </div>
+  <div class="sec" data-s="remote">
+    <h4 style="margin:4px 0">📱 手机 / 其他电脑远程控制</h4>
+    <label class="chk"><input type="checkbox" id="st-remote_enabled"> 允许同一个网络里的其他设备访问 KOI</label>
+    <div class="two">
+      <div><label class="l">用户名</label><input id="st-remote_username" autocomplete="off"></div>
+      <div><label class="l">访问密码（必填）</label><input id="st-remote_password" type="password" autocomplete="new-password"></div>
+    </div>
+    <div id="remote-box" style="margin-top:10px"></div>
+    <div class="hint">兼容 qBittorrent 接口：Sonarr / Radarr、qBittorrent 手机遥控 App（如 qBitController、nzb360）都能直接连。类型选 qBittorrent，地址填上面任意一个，用户名和密码同上。</div>
+    <h4 style="margin:18px 0 4px">🧩 浏览器接管下载</h4>
+    <div id="ext-status" class="small"></div>
+    <ol class="small" style="margin:8px 0;padding-left:20px;line-height:1.9">
+      <li>点 <button onclick="api('/api/open_ext_folder',{})" style="padding:2px 8px">📂 打开扩展文件夹</button></li>
+      <li>在 Chrome 地址栏打开 <code>chrome://extensions</code>（Edge 是 <code>edge://extensions</code>） <button onclick="navigator.clipboard.writeText('chrome://extensions');toast('已复制')" style="padding:2px 8px">复制</button></li>
+      <li>右上角打开「开发者模式」→「加载已解压的扩展程序」→ 选第 1 步打开的文件夹</li>
+    </ol>
+    <div class="hint">装好后，在浏览器里点下载会自动交给 KOI 用多线程下载，并带上登录状态（网盘这类要登录的也能下）。右键链接也可以选「用 KOI BT下载」。</div>
+  </div>
+  </div>
+  <div class="btns"><button onclick="closeM('m-set')">取消</button><button class="primary" onclick="saveSettings()">保存</button></div>
+</div></div>
+
+<!-- RSS -->
+<div class="mask" id="m-rss"><div class="dlg wide">
+  <h3>📡 RSS 订阅 · 自动追剧<span class="grow"></span><button onclick="rssOp({op:'refresh'})">🔄 立即刷新</button><button class="ghost" onclick="closeM('m-rss')">✕</button></h3>
+  <div class="dtabs" id="rss-tabs">
+    <button class="dtab on" data-r="feeds">订阅源</button>
+    <button class="dtab" data-r="rules">自动下载规则</button>
+    <button class="dtab" data-r="log">下载记录</button>
+  </div>
+  <div class="dbody" id="rss-body"></div>
+</div></div>
+
+<!-- 做种子 -->
+<div class="mask" id="m-create"><div class="dlg">
+  <h3>🧩 把文件做成种子</h3>
+  <label class="l">文件或文件夹的完整路径</label><input id="cr-path" class="pathpick" data-kind="any" placeholder="D:\分享\我的视频">
+  <label class="l">tracker（一行一个，留空 = 只靠 DHT）</label>
+  <textarea id="cr-trk">udp://tracker.opentrackr.org:1337/announce
+udp://open.stealth.si:80/announce
+udp://tracker.torrent.eu.org:451/announce</textarea>
+  <label class="l">备注（可选）</label><input id="cr-comment">
+  <label class="chk"><input type="checkbox" id="cr-private"> 私有种子（只能通过 tracker 找人，不走 DHT）</label>
+  <label class="chk"><input type="checkbox" id="cr-seed" checked> 做完立刻开始做种</label>
+  <div id="cr-out" class="hint" style="display:none"></div>
+  <div class="btns"><button onclick="closeM('m-create')">关闭</button><button class="primary" id="cr-btn" onclick="doCreate()">生成种子</button></div>
+</div></div>
+
+<!-- 更新：下载好了，问用户要不要现在重启 -->
+<div class="mask" id="m-updready"><div class="dlg" style="width:520px">
+  <h3>🎉 新版本 <span id="ur-ver" class="notr"></span> 已经下载好了</h3>
+  <div id="ur-notes" class="hint notes" style="white-space:pre-line"></div>
+  <p class="small sub" style="margin:12px 0 0">安装需要重启 KOI，大约 10 秒。正在下载的任务会在重启后自动接着下，不会丢进度。</p>
+  <div class="btns"><button onclick="updLater()">稍后（退出 KOI 时自动安装）</button><button class="primary" onclick="updNow()">立即重启并更新</button></div>
+</div></div>
+<!-- 更新完成后第一次打开 -->
+<div class="mask" id="m-updated"><div class="dlg" style="width:480px">
+  <h3>✅ 已更新到 <span id="ud-ver" class="notr"></span></h3>
+  <div id="ud-notes" class="hint notes" style="white-space:pre-line"></div>
+  <div class="btns"><button class="primary" onclick="updAck()">好的</button></div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+<div id="dragAll">松手添加 🐟</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

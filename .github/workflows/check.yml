@@ -1,0 +1,22 @@
+# 每次提交：语法检查 + 在 Linux 上把后台跑起来，确认接口能用
+name: Check
+
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install libtorrent==2.1.1 aiohttp segno cryptography
+      - name: 编译检查
+        run: python -m compileall -q koi main.py
+      - name: 冒烟测试
+        run: |
+          KOI_HOME=$RUNNER_TEMP/koi python main.py --headless &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:18790/api/ext/ping && break; sleep 1; done
+          curl -sf http://127.0.0.1:18790/api/state > /dev/null
+          curl -sf http://127.0.0.1:18790/ > /dev/null
