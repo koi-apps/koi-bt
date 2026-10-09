@@ -226,7 +226,8 @@ class Core:
                     self.bt.save_all()
                 if n % (6 * 3600 * 2) == 0 and n:
                     asyncio.get_running_loop().run_in_executor(None, self.bt.refresh_trackers)
-                if self.settings["auto_update_check"] and (n == 30 or (n and n % (6 * 3600 * 2) == 0)):
+                # 打开软件几秒后就查一次，之后每小时再查一次（循环每 0.5 秒一圈）
+                if self.settings["auto_update_check"] and (n == 6 or (n and n % (3600 * 2) == 0)):
                     asyncio.get_running_loop().run_in_executor(None, self._auto_check_update)
             except Exception as e:
                 print("后台循环出错：", repr(e))

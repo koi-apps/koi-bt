@@ -143,7 +143,7 @@
     <label class="chk"><input type="checkbox" id="st-close_to_tray"> 点关闭时缩到右下角托盘（不退出）</label>
     <h4 style="margin:18px 0 4px">版本与更新</h4>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span>当前版本 <b id="cur-ver"></b></span><button onclick="checkUpdate(true)">🔄 检查更新</button><span id="upd-msg" class="sub small"></span></div>
-    <label class="chk"><input type="checkbox" id="st-auto_update_check"> 自动检查新版本（每 6 小时一次，有新版本会提示，不会自己装）</label>
+    <label class="chk"><input type="checkbox" id="st-auto_update_check"> 自动检查新版本（每次打开软件时检查，之后每小时一次；有新版本会提示，不会自己装）</label>
     <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
       <button onclick="associate()">🔗 设为默认下载器（磁力链 / 种子 / 迅雷链接）</button>
       <button onclick="api('/api/cancel_shutdown',{});toast('已取消关机')">取消定时关机</button>

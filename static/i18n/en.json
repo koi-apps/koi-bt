@@ -541,5 +541,6 @@
 "全选 / 取消全选当前列表（Ctrl+A）": "Select / deselect all in this list (Ctrl+A)",
 "已选 {0}": "{0} selected",
 "剩余时间": "Time left",
-"已完成的按完成时间；没下完的按预计完成时间": "Completed tasks by finish time; others by estimated finish time"
+"已完成的按完成时间；没下完的按预计完成时间": "Completed tasks by finish time; others by estimated finish time",
+"自动检查新版本（每次打开软件时检查，之后每小时一次；有新版本会提示，不会自己装）": "Check for new versions automatically (on startup, then hourly; you'll be asked, nothing installs on its own)"
 }
