@@ -84,6 +84,8 @@ class Updater:
         return urllib.request.urlopen(req, timeout=timeout)
 
     def check(self):
+        if C.IS_STORE:
+            return self._result({"ok": True, "update": False, "current": C.VERSION, "version": C.VERSION, "store": True})
         errs = []
         for base in self.bases():
             try:
@@ -268,7 +270,8 @@ del "%~f0"
     def view(self):
         return {"state": self.state, "last_check": self.last_check, "current": C.VERSION,
                 "frozen": bool(getattr(sys, "frozen", False)), "docker": bool(os.environ.get("KOI_DOCKER")),
-                "hint": os.environ.get("KOI_UPDATE_HINT") or ("拉取新镜像后重建容器即可更新" if os.environ.get("KOI_DOCKER") else "")}
+                "hint": os.environ.get("KOI_UPDATE_HINT") or ("拉取新镜像后重建容器即可更新" if os.environ.get("KOI_DOCKER") else "") or ("由微软商店自动更新" if C.IS_STORE else ""),
+                "store": C.IS_STORE}
 
 
 def cleanup_old_files():

@@ -307,7 +307,7 @@ function renderUpdate(){
 async function checkUpdate(manual){
   if($('upd-msg'))$('upd-msg').textContent='检查中…';
   const r=await api('/api/update/check',{}); await poll1();
-  const msg=!r.ok?(r.msg||'检查失败'):r.update?`发现新版本 ${r.version}`:`已经是最新版（v${r.current}）`;
+  const msg=r.store?'商店版由微软商店自动更新':!r.ok?(r.msg||'检查失败'):r.update?`发现新版本 ${r.version}`:`已经是最新版（v${r.current}）`;
   if($('upd-msg'))$('upd-msg').textContent=msg;
   if(manual){toast(msg); if(r.ok&&r.update){updDismissed=false;renderUpdate()}}
 }

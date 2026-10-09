@@ -12,6 +12,22 @@ UI_PORT = 18790
 
 BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
 STATIC_DIR = BASE_DIR / "static"
+def _is_packaged():
+    """是不是微软商店（MSIX）安装的版本：商店版的更新、文件关联都交给商店 / 清单处理。"""
+    if sys.platform != "win32":
+        return False
+    try:
+        import ctypes
+        n = ctypes.c_uint32(0)
+        # 有包身份时返回 ERROR_INSUFFICIENT_BUFFER(122)，没有时返回 APPMODEL_ERROR_NO_PACKAGE(15700)
+        return ctypes.windll.kernel32.GetCurrentPackageFullName(ctypes.byref(n), None) != 15700
+    except Exception:
+        return False
+
+
+IS_STORE = _is_packaged()
+
+
 def _default_data_dir():
     r"""Windows：%APPDATA%\KOI BT；其他系统：~/.config/koi-bt。早期版本放在 ~/.koi_downloader，首次启动自动搬过来。"""
     if os.environ.get("KOI_HOME"):

@@ -86,6 +86,9 @@ def register_associations():
     """把磁力链和 .torrent 关联到 KOI（只写当前用户，不需要管理员）。"""
     if not IS_WIN:
         return False, "只支持 Windows"
+    from . import config as C
+    if C.IS_STORE:
+        return True, "商店版安装时已经自动关联了磁力链和 .torrent 文件。如果没生效，在 Windows「设置 → 应用 → 默认应用」里选 KOI BT"
     import winreg
 
     cmd = exe_command()

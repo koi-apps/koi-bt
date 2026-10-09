@@ -47,6 +47,15 @@ jobs:
           choco install innosetup -y --no-progress
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=${{ steps.ver.outputs.version }}" installer\koi-bt.iss
 
+      - name: 微软商店包（MSIX，由商店签名）
+        if: vars.MSIX_IDENTITY != ''
+        shell: pwsh
+        run: |
+          python tools/build_msix_layout.py "${{ vars.MSIX_IDENTITY }}" "${{ vars.MSIX_PUBLISHER }}" "${{ vars.MSIX_PUBLISHER_NAME }}"
+          $mk = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makeappx.exe" | Sort-Object FullName | Select-Object -Last 1
+          & $mk.FullName pack /d dist\msix /p "dist\KOI-BT-${{ steps.ver.outputs.version }}.msix" /o
+          if ($LASTEXITCODE -ne 0) { throw "makeappx 失败" }
+
       - name: 签名更新清单
         env:
           KOI_UPDATE_SIGNING_KEY: ${{ secrets.KOI_UPDATE_SIGNING_KEY }}
@@ -70,6 +79,7 @@ jobs:
             dist/KOI-BT-*-portable.zip
             dist/KOI-BT-*-setup.exe
             dist/SHA256SUMS.txt
+            dist/KOI-BT-*.msix
             latest.json
           fail_on_unmatched_files: false
           generate_release_notes: true
