@@ -187,3 +187,7 @@ table.ftbl .tw{display:inline-block;width:12px;color:var(--sub)}
 
 .pills{display:flex;gap:6px;flex-wrap:wrap}
 .h-seed{color:var(--green)} .h-seed .dot{background:var(--green);animation:pulse 1.6s infinite}
+
+/* 工具栏最左边的全选框，和每行的勾选框上下对齐 */
+.selall{display:flex;align-items:center;gap:6px;padding:0 10px 0 15px;cursor:pointer;user-select:none;font-size:13px;white-space:nowrap}
+.selall input{width:16px;height:16px;margin:0}

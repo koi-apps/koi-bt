@@ -40,6 +40,11 @@ function render(){
   $('c-http').textContent=data.filter(t=>t.type==='http').length||'';
   for(const id of [...sel]) if(!data.find(t=>t.id===id)) sel.delete(id);
   ['b-resume','b-pause','b-del','b-up','b-down'].forEach(b=>$(b).disabled=!sel.size);
+  { // 全选框：只管当前分类 / 搜索下看得到的任务
+    const vis=data.filter(pass), n=vis.filter(t=>sel.has(t.id)).length, cb=$('selAll');
+    cb.checked=vis.length>0&&n===vis.length; cb.indeterminate=n>0&&n<vis.length;
+    $('selN').textContent=sel.size?` (${sel.size})`:'';
+  }
   const rows=data.filter(pass);
   if(!rows.length){
     $('list').innerHTML=data.length?'<div class="empty">这个分类下没有任务</div>':
@@ -112,6 +117,7 @@ function spdHtml(t,done){
   const u=t.type==='bt'?`<div class="u ${t.up>0?'':'z'}"><span class="ar">⬆</span>${idle?'—':fmtR(t.up)}</div>`:'';
   return d+u;
 }
+function toggleAll(on){ const vis=data.filter(pass); if(on) vis.forEach(t=>sel.add(t.id)); else vis.forEach(t=>sel.delete(t.id)); render() }
 function tog(id,e){e.stopPropagation();sel.has(id)?sel.delete(id):sel.add(id);render()}
 document.addEventListener('click',e=>{const r=e.target.closest('.row');if(r&&!e.target.closest('button,input')){const id=r.dataset.id;if(e.shiftKey&&sel.size){const ids=data.filter(pass).map(t=>t.id);const a=ids.indexOf([...sel].pop()),b=ids.indexOf(id);ids.slice(Math.min(a,b),Math.max(a,b)+1).forEach(x=>sel.add(x))}else if(!e.ctrlKey&&!e.metaKey){const only=sel.size===1&&sel.has(id);sel.clear();if(!only)sel.add(id)}else{sel.has(id)?sel.delete(id):sel.add(id)}render()}});
 async function act(a){await api('/api/action',{action:a,ids:[...sel]});poll1()}

@@ -27,6 +27,7 @@
 </header>
 
 <div class="toolbar">
+  <label class="selall" title="全选 / 取消全选当前列表（Ctrl+A）"><input type="checkbox" id="selAll" onchange="toggleAll(this.checked)"> <span>全选</span><span id="selN" class="sub small"></span></label>
   <button class="primary" onclick="openAdd()">＋ 添加下载</button>
   <button id="b-resume" onclick="act('resume')" disabled>▶ 开始</button>
   <button id="b-pause" onclick="act('pause')" disabled>⏸ 暂停</button>
