@@ -189,5 +189,15 @@ table.ftbl .tw{display:inline-block;width:12px;color:var(--sub)}
 .h-seed{color:var(--green)} .h-seed .dot{background:var(--green);animation:pulse 1.6s infinite}
 
 /* 工具栏最左边的全选框，和每行的勾选框上下对齐 */
-.selall{display:flex;align-items:center;gap:6px;padding:0 10px 0 15px;cursor:pointer;user-select:none;font-size:13px;white-space:nowrap}
-.selall input{width:16px;height:16px;margin:0}
+
+/* 列表表头：和 .row 用同一套列宽，全选框和每行勾选框对齐，「剩余时间」「速度」对着下面两列 */
+.listhead{display:grid;grid-template-columns:20px 1fr 104px 128px 340px;gap:12px;align-items:center;margin:0 16px 6px;padding:2px 15px;font-size:12px;color:var(--sub)}
+.listhead input{width:16px;height:16px;margin:0}
+.lh-main{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.lh-main #selN{margin-right:6px;color:var(--accent)}
+.lh{border:none;background:transparent;color:var(--sub);padding:3px 8px;font-size:12px;border-radius:6px}
+.lh:hover{background:var(--hover);color:var(--text)}
+.lh.on{color:var(--text);font-weight:600;background:var(--hover)}
+.lh::after{content:attr(data-arrow)}
+.lh.r{justify-self:end}
+@media (max-width:760px){.listhead{grid-template-columns:20px 1fr auto auto}.lh-acts{display:none}}

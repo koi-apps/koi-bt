@@ -464,6 +464,7 @@ class Engine:
                 "eta": int(left / rate) if rate > 0 and left > 0 else None,
                 "save_path": st.save_path,
                 "added": st.added_time,
+                "completed": st.completed_time if st.completed_time > 0 else None,
                 "queue": st.queue_position,
                 "sequential": bool(st.flags & lt.torrent_flags.sequential_download),
                 "category": self.meta.get(ih, {}).get("category", ""),

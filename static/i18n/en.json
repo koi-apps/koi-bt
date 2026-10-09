@@ -123,7 +123,7 @@
 "删除任务": "Delete tasks",
 "取消订阅": "Unsubscribe",
 "取消限速": "Remove limit",
-"完成时间": "Completed on",
+"完成时间": "Finish time",
 "对方进度": "Peer progress",
 "开始下载": "Start download",
 "强制开始": "Force start",
@@ -137,7 +137,7 @@
 "正在联系": "Contacting",
 "添加下载": "Add download",
 "添加失败": "Add failed",
-"添加时间": "Added on",
+"添加时间": "Added",
 "生成种子": "Create torrent",
 "监听端口": "Listening port",
 "磁盘空间": "Disk space",
@@ -538,5 +538,8 @@
 "下载者": "Peers",
 "拉取新镜像后重建容器即可更新": "Pull the new image and recreate the container to update",
 "请在群晖套件中心更新 KOI BT": "Update KOI BT from Synology Package Center",
-"全选 / 取消全选当前列表（Ctrl+A）": "Select / deselect all in this list (Ctrl+A)"
+"全选 / 取消全选当前列表（Ctrl+A）": "Select / deselect all in this list (Ctrl+A)",
+"已选 {0}": "{0} selected",
+"剩余时间": "Time left",
+"已完成的按完成时间；没下完的按预计完成时间": "Completed tasks by finish time; others by estimated finish time"
 }

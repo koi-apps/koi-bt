@@ -43,9 +43,10 @@ function render(){
   { // 全选框：只管当前分类 / 搜索下看得到的任务
     const vis=data.filter(pass), n=vis.filter(t=>sel.has(t.id)).length, cb=$('selAll');
     cb.checked=vis.length>0&&n===vis.length; cb.indeterminate=n>0&&n<vis.length;
-    $('selN').textContent=sel.size?` (${sel.size})`:'';
+    $('selN').textContent=sel.size?`已选 ${sel.size}`:'';
   }
-  const rows=data.filter(pass);
+  const rows=data.filter(pass).sort(cmpRows);
+  renderHead();
   if(!rows.length){
     $('list').innerHTML=data.length?'<div class="empty">这个分类下没有任务</div>':
       `<div class="empty"><img src="/static/logo.png" width="96" alt=""><p style="font-size:16px;color:var(--text)">还没有下载任务</p>
@@ -117,6 +118,20 @@ function spdHtml(t,done){
   const u=t.type==='bt'?`<div class="u ${t.up>0?'':'z'}"><span class="ar">⬆</span>${idle?'—':fmtR(t.up)}</div>`:'';
   return d+u;
 }
+/* 排序：点表头切换，再点一次反过来；记在本机 */
+let sortK='added', sortD=-1;
+try{ const sv=JSON.parse(localStorage.getItem('koi_sort')||'null'); if(sv){sortK=sv.k;sortD=sv.d} }catch(e){}
+const SORT_VAL={
+  name:t=>t.name.toLowerCase(), progress:t=>t.progress, size:t=>t.size||0, added:t=>t.added||0,
+  eta:t=>isDone(t)?Infinity:(t.paused||t.queued||t.eta==null)?Infinity-1:t.eta,   // 快下完的排前面，没在动的排后面
+  down:t=>(t.down||0)*1e6+(t.up||0),                                             // 先按下载速度，再按上传速度
+  // 完成时间：已完成的用实际完成时间，没下完的用「现在 + 剩余时间」预计完成时间，没在动的排最后
+  done:t=>isDone(t)?(t.completed||t.added||0):(t.paused||t.queued||t.eta==null)?Infinity:Date.now()/1000+t.eta,
+};
+function cmpRows(a,b){ const f=SORT_VAL[sortK]||SORT_VAL.added, x=f(a), y=f(b); return (x<y?-1:x>y?1:0)*sortD || (b.added-a.added) }
+function setSort(k){ if(sortK===k) sortD=-sortD; else { sortK=k; sortD=(k==='name'||k==='eta'||k==='done')?1:-1 } try{localStorage.setItem('koi_sort',JSON.stringify({k:sortK,d:sortD}))}catch(e){} render() }
+function renderHead(){ document.querySelectorAll('#listhead .lh').forEach(b=>{ const on=b.dataset.k===sortK; b.classList.toggle('on',on); b.dataset.arrow=on?(sortD>0?' ▲':' ▼'):'' }) }
+document.querySelectorAll('#listhead .lh').forEach(b=>b.onclick=()=>setSort(b.dataset.k));
 function toggleAll(on){ const vis=data.filter(pass); if(on) vis.forEach(t=>sel.add(t.id)); else vis.forEach(t=>sel.delete(t.id)); render() }
 function tog(id,e){e.stopPropagation();sel.has(id)?sel.delete(id):sel.add(id);render()}
 document.addEventListener('click',e=>{const r=e.target.closest('.row');if(r&&!e.target.closest('button,input')){const id=r.dataset.id;if(e.shiftKey&&sel.size){const ids=data.filter(pass).map(t=>t.id);const a=ids.indexOf([...sel].pop()),b=ids.indexOf(id);ids.slice(Math.min(a,b),Math.max(a,b)+1).forEach(x=>sel.add(x))}else if(!e.ctrlKey&&!e.metaKey){const only=sel.size===1&&sel.has(id);sel.clear();if(!only)sel.add(id)}else{sel.has(id)?sel.delete(id):sel.add(id)}render()}});

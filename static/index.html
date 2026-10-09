@@ -27,7 +27,6 @@
 </header>
 
 <div class="toolbar">
-  <label class="selall" title="全选 / 取消全选当前列表（Ctrl+A）"><input type="checkbox" id="selAll" onchange="toggleAll(this.checked)"> <span>全选</span><span id="selN" class="sub small"></span></label>
   <button class="primary" onclick="openAdd()">＋ 添加下载</button>
   <button id="b-resume" onclick="act('resume')" disabled>▶ 开始</button>
   <button id="b-pause" onclick="act('pause')" disabled>⏸ 暂停</button>
@@ -44,6 +43,21 @@
 </div>
 
 <div id="upd" class="updbar" style="display:none"></div>
+<!-- 列表表头：全选 + 排序（和每行的列对齐） -->
+<div class="listhead" id="listhead">
+  <input type="checkbox" id="selAll" title="全选 / 取消全选当前列表（Ctrl+A）" onchange="toggleAll(this.checked)">
+  <div class="lh-main">
+    <span class="sub small" id="selN"></span>
+    <button class="lh" data-k="name">名称</button>
+    <button class="lh" data-k="progress">进度</button>
+    <button class="lh" data-k="size">大小</button>
+    <button class="lh" data-k="added">添加时间</button>
+    <button class="lh" data-k="done" title="已完成的按完成时间；没下完的按预计完成时间">完成时间</button>
+  </div>
+  <button class="lh r" data-k="eta">剩余时间</button>
+  <button class="lh r" data-k="down">速度</button>
+  <div class="lh-acts"></div>
+</div>
 <main id="list"></main>
 
 <footer>

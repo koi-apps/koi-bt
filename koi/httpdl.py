@@ -493,6 +493,7 @@ class HttpManager:
                 "progress": prog, "size": t.size, "done": done, "down": t.speed, "up": 0,
                 "eta": int(left / t.speed) if t.speed and left else None,
                 "save_path": t.save_path, "added": t.added, "category": t.category,
+                "completed": t.completed or None,
                 "error": t.error if t.state == "error" else "", "health": health,
                 "threads": t.active_conns, "url": t.url, "ranges": t.ranges,
                 "segments": [[s["start"], s["end"], s["pos"]] for s in t.segments][:64] if t.size else [],
