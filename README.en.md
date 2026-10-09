@@ -86,7 +86,9 @@ Contributions are welcome. If you change UI text, run `python tools/build_i18n.p
 
 ## Privacy and code signing
 
-KOI BT collects no personal data; see [PRIVACY.md](PRIVACY.md). Code signing policy: [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md).
+KOI BT collects no personal data; see [PRIVACY.md](PRIVACY.md).
+
+Code signing: we are applying for free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org). Once approved, all releases will be signed. Policy: [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md).
 
 ## License
 

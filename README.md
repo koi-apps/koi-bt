@@ -112,7 +112,9 @@ Windows 打包：运行 `build.bat`。发布流程在 `.github/workflows/release
 
 ## 隐私与代码签名
 
-KOI BT 不收集任何个人数据，详见 [PRIVACY.md](PRIVACY.md)。代码签名政策见 [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md)。
+KOI BT 不收集任何个人数据，详见 [PRIVACY.md](PRIVACY.md)。
+
+代码签名：我们正在申请 SignPath Foundation 的开源免费签名（Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org)），获批后发布的程序都会带签名。签名政策见 [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md)。
 
 ## 许可证
 
