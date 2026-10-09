@@ -9,7 +9,7 @@
 AppId={{2FB11707-20C1-4672-91FB-CEDCC212238B}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-AppPublisher=KOI BT contributors
+AppPublisher=KOI Apps Studio
 AppPublisherURL=https://github.com/koi-apps/koi-bt
 DefaultDirName={localappdata}\Programs\{#MyAppName}
 DefaultGroupName={#MyAppName}
