@@ -13,7 +13,7 @@ UI_PORT = 18790
 BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
 STATIC_DIR = BASE_DIR / "static"
 def _default_data_dir():
-    """Windows：%APPDATA%\KOI BT；其他系统：~/.config/koi-bt。早期版本放在 ~/.koi_downloader，首次启动自动搬过来。"""
+    r"""Windows：%APPDATA%\KOI BT；其他系统：~/.config/koi-bt。早期版本放在 ~/.koi_downloader，首次启动自动搬过来。"""
     if os.environ.get("KOI_HOME"):
         return Path(os.environ["KOI_HOME"])
     if sys.platform == "win32" and os.environ.get("APPDATA"):
