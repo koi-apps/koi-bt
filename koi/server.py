@@ -674,6 +674,11 @@ def build_app(core: Core):
         html = html.replace("__SRC__", f"/stream/{ih}/{idx}/{name}").replace("__NAME__", info["name"].replace("<", "&lt;"))
         return web.Response(text=html, content_type="text/html")
 
+    @routes.get("/api/stream_map/{ih}/{idx}")
+    async def stream_map(req):
+        m = core.bt.stream_map(req.match_info["ih"], int(req.match_info["idx"]))
+        return web.json_response(m or {"map": [], "done": 0, "down": 0, "size": 0})
+
     @routes.post("/api/play_external/{ih}/{idx}")
     async def play_external(req):
         ih, idx = req.match_info["ih"], int(req.match_info["idx"])

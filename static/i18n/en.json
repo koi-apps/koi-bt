@@ -556,5 +556,15 @@
 "点「确定」选文件夹，点「取消」选单个文件。": "Click OK to pick a folder, or Cancel to pick a single file.",
 "Docker 版请拉取新镜像更新：docker pull ghcr.io/koi-apps/koi-bt:latest": "To update the Docker version, pull the new image: docker pull ghcr.io/koi-apps/koi-bt:latest",
 "商店版安装时已经自动关联了磁力链和 .torrent 文件。如果没生效，在 Windows「设置 → 应用 → 默认应用」里选 KOI BT": "The Store version registers magnet links and .torrent files during installation. If that didn't take effect, choose KOI BT in Windows Settings → Apps → Default apps",
-"有些没加进去：": "Some items couldn't be added:"
+"有些没加进去：": "Some items couldn't be added:",
+"已全部下载": "Fully downloaded",
+"已下载": "Downloaded",
+"未下载，要等一会": "not downloaded yet, may take a moment",
+"缓冲中…正在优先下载这一段": "Buffering… downloading this part first",
+"播放 / 暂停（空格）": "Play / pause (Space)",
+"静音（M）": "Mute (M)",
+"全屏（F / 双击画面）": "Full screen (F / double-click)",
+"复制播放地址": "Copy stream URL",
+"粘贴到 PotPlayer / VLC 里播放": "Paste into PotPlayer / VLC to play",
+"这个格式浏览器播不了，点「复制播放地址」用 PotPlayer 或 VLC 打开": "Your browser can't play this format. Click \"Copy stream URL\" and open it in PotPlayer or VLC"
 }

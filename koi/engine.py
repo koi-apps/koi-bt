@@ -720,6 +720,27 @@ class Engine:
         self.stream_watch[ih] = {"file": index, "pos": 0}
         return info
 
+    def stream_map(self, ih, index, buckets=240):
+        """播放器进度条用：把这个文件切成 buckets 段，每段已经下了多少（0~1）。"""
+        info = self.stream_file_info(ih, index)
+        if not info:
+            return None
+        h = info["handle"]
+        st = h.status(lt.status_flags_t.query_pieces)
+        have = st.pieces
+        pl = info["piece_len"]
+        first = info["offset"] // pl
+        last = (info["offset"] + info["size"] - 1) // pl
+        n = last - first + 1
+        k = min(buckets, n)
+        out = []
+        for j in range(k):
+            a = first + j * n // k
+            b = first + (j + 1) * n // k
+            out.append(round(sum(1 for pc in range(a, b) if have[pc]) / max(1, b - a), 2))
+        done = sum(1 for pc in range(first, last + 1) if have[pc]) / n
+        return {"map": out, "done": round(done, 4), "down": st.download_payload_rate, "size": info["size"]}
+
     def want_range(self, ih, index, start, end):
         """播放器要读 [start, end) 这段：把对应的块设为最急。返回这段是否已经齐了。"""
         info = self.stream_file_info(ih, index)
