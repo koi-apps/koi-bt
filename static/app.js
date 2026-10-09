@@ -509,7 +509,7 @@ function renderDiag(id,d){
 async function doFix(id,what){await api('/api/fix/'+id,{what});toast('已执行，几十秒后再看效果');setTimeout(()=>{if(detId===id&&detTab==='diag')loadDet(true)},3000);poll1()}
 function renderPeers(d){
   $('det-body').innerHTML=`<div class="sub small" style="margin-bottom:6px">共 ${d.peers.length} 个连接</div><table class="t"><tr><th>地址</th><th>客户端</th><th>对方进度</th><th>⬇ 从他那</th><th>⬆ 给他</th><th>累计 ⬇/⬆</th><th>来源</th></tr>${d.peers.map(p=>`<tr>
-   <td class="mono">${esc(p.ip)}${p.seed?' <span class="pill">做种</span>':''}${p.encrypted?' 🔒':''}</td><td>${esc(p.client)}</td><td>${(p.progress*100).toFixed(1)}%</td>
+   <td><span class="mono">${esc(p.ip)}</span>${p.seed?' <span class="pill">做种者</span>':''}${p.encrypted?' 🔒':''}</td><td>${esc(p.client)}</td><td>${(p.progress*100).toFixed(1)}%</td>
    <td>${fmtR(p.down)}</td><td>${fmtR(p.up)}</td><td>${fmtB(p.downloaded)} / ${fmtB(p.uploaded)}</td><td>${p.source}</td></tr>`).join('')}</table>`;
 }
 function renderTrackers(d){

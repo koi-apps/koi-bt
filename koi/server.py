@@ -149,7 +149,7 @@ class Core:
         except Exception:
             dn = None
         if dn is not None:
-            add("ok" if dn > 20 else "warn", "DHT 网络", f"已连接 {dn} 个节点" + ("" if dn > 20 else "，太少，磁力链会很难找到人"))
+            add("ok" if dn > 20 else "warn", "DHT 网络", f"已连接 {dn} 个节点" if dn > 20 else f"已连接 {dn} 个节点，太少，磁力链会很难找到人")
         n = self.bt.net
         if n["cgnat"]:
             add("warn", "你在运营商内网（CGNAT）", "别人连不进你，只能你去连别人，能连上的人会少一半。可以打电话给运营商要独立公网 IP")
@@ -164,10 +164,10 @@ class Core:
             elif not st.is_seeding:
                 add("ok", "做种人数", f"连上 {st.num_seeds} 个有完整文件的人，可用性 {st.distributed_copies:.2f}")
         else:
-            add("warn" if st.num_peers == 0 else "ok", "种子信息", "还在找种子信息" + ("，目前一个人都没找到" if st.num_peers == 0 else f"，已连上 {st.num_peers} 人"), "reannounce")
+            add("warn" if st.num_peers == 0 else "ok", "种子信息", "还在找种子信息，目前一个人都没找到" if st.num_peers == 0 else f"还在找种子信息，已连上 {st.num_peers} 人", "reannounce")
         lim = self.settings["alt_download_limit_kb"] if self.bt._alt_active() else self.settings["download_limit_kb"]
         if lim:
-            add("warn", "全局限速中", f"下载被限制在 {lim} KB/s" + ("（乌龟模式 / 时段限速）" if self.bt._alt_active() else ""), "unlimit")
+            add("warn", "全局限速中", f"下载被限制在 {lim} KB/s（乌龟模式 / 时段限速）" if self.bt._alt_active() else f"下载被限制在 {lim} KB/s", "unlimit")
         if h.download_limit() > 0:
             add("warn", "这个任务单独限速了", f"{h.download_limit()//1024} KB/s", "unlimit_one")
         if st.num_peers == 0 and st.connect_candidates == 0 and st.has_metadata and not st.is_seeding:

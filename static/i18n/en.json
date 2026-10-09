@@ -544,5 +544,17 @@
 "已完成的按完成时间；没下完的按预计完成时间": "Completed tasks by finish time; others by estimated finish time",
 "自动检查新版本（每次打开软件时检查，之后每小时一次；有新版本会提示，不会自己装）": "Check for new versions automatically (on startup, then hourly; you'll be asked, nothing installs on its own)",
 "商店版由微软商店自动更新": "The Store version is updated by Microsoft Store",
-"由微软商店自动更新": "Updated by Microsoft Store"
+"由微软商店自动更新": "Updated by Microsoft Store",
+"做种者": "Seed",
+"单线程下载（服务器不支持多线程）": "Single connection (server doesn't support multi-threading)",
+"还在找种子信息，已连上 {0} 人": "Still looking for metadata, {0} peers connected",
+"还在找种子信息，目前一个人都没找到": "Still looking for metadata, no peers found so far",
+"已连接 {0} 个节点，太少，磁力链会很难找到人": "{0} nodes connected, too few: magnet links will struggle to find peers",
+"下载被限制在 {0} KB/s（乌龟模式 / 时段限速）": "Download limited to {0} KB/s (turtle mode / schedule)",
+"{0} 线程下载中（服务器限制连接数，已自动降到 {1} 线程）": "Downloading with {0} threads (server limits connections, reduced to {1})",
+"要分享的是一个文件夹吗？": "Do you want to share a folder?",
+"点「确定」选文件夹，点「取消」选单个文件。": "Click OK to pick a folder, or Cancel to pick a single file.",
+"Docker 版请拉取新镜像更新：docker pull ghcr.io/koi-apps/koi-bt:latest": "To update the Docker version, pull the new image: docker pull ghcr.io/koi-apps/koi-bt:latest",
+"商店版安装时已经自动关联了磁力链和 .torrent 文件。如果没生效，在 Windows「设置 → 应用 → 默认应用」里选 KOI BT": "The Store version registers magnet links and .torrent files during installation. If that didn't take effect, choose KOI BT in Windows Settings → Apps → Default apps",
+"有些没加进去：": "Some items couldn't be added:"
 }

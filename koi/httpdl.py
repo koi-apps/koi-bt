@@ -486,7 +486,7 @@ class HttpManager:
             health = {"level": "done", "text": "已完成"} if t.state == "done" else \
                 {"level": "red", "text": t.error} if t.state == "error" else \
                 {"level": "paused", "text": state} if t.state in ("paused", "queued") else \
-                {"level": "green", "text": f"{t.active_conns} 线程下载中" + ("" if t.ranges else "（服务器不支持多线程，单线程下载）") + (f"（服务器限制连接数，已自动降到 {t.conn_limit} 线程）" if t.throttled and t.conn_limit < t.threads else "")}
+                {"level": "green", "text": "单线程下载（服务器不支持多线程）" if not t.ranges else f"{t.active_conns} 线程下载中（服务器限制连接数，已自动降到 {t.conn_limit} 线程）" if t.throttled and t.conn_limit < t.threads else f"{t.active_conns} 线程下载中"}
             out.append({
                 "type": "http", "id": t.id, "name": t.filename or t.url, "state": state,
                 "paused": t.state in ("paused", "error"), "queued": t.state == "queued",
