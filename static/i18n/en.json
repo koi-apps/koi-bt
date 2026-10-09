@@ -535,5 +535,7 @@
 "分享率到": "until ratio",
 "停止": "",
 "自己分享的，一直做种": "your own share, always seeding",
-"下载者": "Peers"
+"下载者": "Peers",
+"拉取新镜像后重建容器即可更新": "Pull the new image and recreate the container to update",
+"请在群晖套件中心更新 KOI BT": "Update KOI BT from Synology Package Center"
 }

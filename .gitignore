@@ -1,10 +1,10 @@
-__pycache__/
-*.pyc
-.venv/
 build/
 dist/
-*.spec
 latest.json
 *.pem
+*.pyc
+__pycache__/
+*.spec
 tools/i18n_keys.json
+.venv/
 version_info.txt

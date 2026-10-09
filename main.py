@@ -93,6 +93,11 @@ def docker_setup(core):
     if not C.SETTINGS_FILE.exists() or s.get("save_path", "").startswith(str(os.path.expanduser("~"))):
         changed["save_path"] = dl
     pw = os.environ.get("KOI_PASSWORD")
+    pw_file = os.environ.get("KOI_PASSWORD_FILE")
+    if not pw and pw_file and os.path.exists(pw_file):
+        with open(pw_file, encoding="utf-8") as f:
+            pw = f.read().strip()
+        os.remove(pw_file)
     user = os.environ.get("KOI_USERNAME")
     if pw:
         changed["remote_password"] = pw

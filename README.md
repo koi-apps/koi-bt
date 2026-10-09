@@ -68,6 +68,10 @@
 > 第一次打开时，Windows 防火墙会问是否允许联网，请点「允许」，否则别人连不进你，速度会慢。
 > 目前安装包还没有代码签名，Windows 可能提示「已保护你的电脑」，点「更多信息 → 仍要运行」即可。我们正在申请开源项目的免费代码签名。
 
+### 群晖套件（DSM 7）
+
+到 [Releases](https://github.com/koi-apps/koi-bt/releases/latest) 下载 `KOI-BT-x.y.z-x86_64.spk`（Intel / AMD 机型）或 `KOI-BT-x.y.z-armv8.spk`（64 位 ARM 机型），在套件中心 →「手动安装」上传。安装时会让你设置网页登录密码；装好后点「打开」或访问 `http://群晖IP:18790`，下载的文件在共享文件夹 `KOI-BT` 里。
+
 ### 群晖 / NAS（Docker）
 
 ```bash

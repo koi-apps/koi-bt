@@ -61,6 +61,10 @@ Requires Windows 10 / 11 (64-bit) and Microsoft Edge WebView2, which ships with 
 > On first launch, allow KOI BT through Windows Firewall so peers can connect to you.
 > Builds are not code-signed yet, so SmartScreen may warn you. Click "More info → Run anyway". We are applying for free open-source code signing.
 
+### Synology package (DSM 7)
+
+Download `KOI-BT-x.y.z-x86_64.spk` (Intel / AMD) or `KOI-BT-x.y.z-armv8.spk` (64-bit ARM) from [Releases](https://github.com/koi-apps/koi-bt/releases/latest) and use Package Center → Manual Install. You will set a web login password during installation; then click Open or visit `http://NAS-IP:18790`. Downloads go to the `KOI-BT` shared folder.
+
 ### NAS / Docker
 
 ```bash

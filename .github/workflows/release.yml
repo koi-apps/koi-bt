@@ -73,3 +73,20 @@ jobs:
             latest.json
           fail_on_unmatched_files: false
           generate_release_notes: true
+
+  # 群晖 DSM 7 套件（Intel / ARM），挂到同一个 Release
+  spk:
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install pillow
+      - name: 打 .spk
+        run: python tools/build_spk.py x86_64 armv8
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.spk
