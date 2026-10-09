@@ -2,7 +2,7 @@
 
 <h1 align="center">KOI BT</h1>
 
-<p align="center">A friendly, transparent BitTorrent &amp; HTTP downloader that plays fair · Windows · Free and open source</p>
+<p align="center">Free, open-source BitTorrent downloader</p>
 
 <p align="center">
   <a href="https://github.com/koi-apps/koi-bt/releases/latest">Download</a> ·

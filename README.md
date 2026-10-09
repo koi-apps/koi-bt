@@ -2,7 +2,7 @@
 
 <h1 align="center">KOI BT</h1>
 
-<p align="center">好用、透明、不吸血的 BT / 直链下载器 · Windows · 开源免费</p>
+<p align="center">开源免费的 BT 下载器</p>
 
 <p align="center">
   <a href="https://github.com/koi-apps/koi-bt/releases/latest">下载最新版</a> ·
