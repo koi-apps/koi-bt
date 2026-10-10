@@ -44,6 +44,12 @@ class Core:
         self.pick_path = None           # 弹出系统选择文件夹窗口，由 main.py 注入（窗口版才有）
         self.updater = Updater(self.settings, lambda: self.quit_app() if self.quit_app else None)
         self._update_notified = None
+        # 下载历史：下完过的种子 / 链接，用来提醒「这个以前下过」
+        self.done_log = {}
+        try:
+            self.done_log = json.loads((C.DATA_DIR / "done_log.json").read_text("utf-8"))
+        except Exception:
+            pass
         # 刚更新完：新版本第一次打开时弹「已更新到 vX」
         self.just_updated = None
         try:
@@ -75,6 +81,69 @@ class Core:
         if link.lower().startswith(("http://", "https://", "ftp://")):
             return self.http.add(link, save_path, headers, category=category)
         raise ValueError("认不出这个链接")
+
+    # ---------- 防重复下载 ----------
+    def _log_done(self):
+        """把下完的任务记进历史（每 5 秒扫一次）。"""
+        changed = False
+        for t in self.bt.snapshot():
+            if t["progress"] >= 1 and f"bt:{t['id']}" not in self.done_log:
+                self.done_log[f"bt:{t['id']}"] = {"name": t["name"], "at": int(time.time())}
+                changed = True
+        for t in list(self.http.tasks.values()):
+            if t.state == "done" and f"url:{t.url}" not in self.done_log:
+                self.done_log[f"url:{t.url}"] = {"name": t.filename or t.url, "at": int(time.time())}
+                changed = True
+        if changed:
+            (C.DATA_DIR / "done_log.json").write_text(json.dumps(self.done_log, ensure_ascii=False), "utf-8")
+
+    @staticmethod
+    def _ids_of(ih):
+        """种子可能是 v1 / v2 / 混合，几种写法都算同一个。"""
+        ids = set()
+        if ih.has_v1():
+            ids.add(str(ih.v1))
+        if ih.has_v2():
+            ids.add(str(ih.v2)[:40])
+        return ids
+
+    def find_dup(self, link=None, data=None, save_path=None, force=False):
+        """返回 None，或者 {"kind": exists|seen|disk, ...}。
+        exists = 已经在列表里（不会再加）；seen = 以前下过；disk = 保存位置已经有这个文件。force 时只拦 exists。"""
+        ids, url, name = set(), None, None
+        try:
+            if data is not None:
+                ti = lt.torrent_info(lt.bdecode(data))
+                ids, name = self._ids_of(ti.info_hashes()), ti.name()
+            elif link:
+                link = decode_special(link.strip())
+                if link.startswith("magnet:"):
+                    ids = self._ids_of(lt.parse_magnet_uri(link).info_hashes)
+                elif re.fullmatch(r"[0-9a-fA-F]{40}", link):
+                    ids = {link.lower()}
+                elif link.lower().startswith(("http://", "https://", "ftp://")) and not LINK_RE.match(link):
+                    url = link
+                    name = urllib.parse.unquote(os.path.basename(urllib.parse.urlparse(link).path))
+        except Exception:
+            return None
+        for i in ids:
+            h = self.bt.find(i)
+            if h:
+                return {"kind": "exists", "id": i, "name": h.status().name or i}
+        if url:
+            for t in self.http.tasks.values():
+                if t.url == url:
+                    return {"kind": "exists", "id": t.id, "name": t.filename or url}
+        if force:
+            return None
+        for key in [f"bt:{i}" for i in ids] + ([f"url:{url}"] if url else []):
+            if key in self.done_log:
+                return {"kind": "seen", "name": self.done_log[key]["name"], "at": self.done_log[key]["at"]}
+        if name:
+            sp = save_path or self.settings["save_path"]
+            if os.path.exists(os.path.join(sp, name)):
+                return {"kind": "disk", "name": name}
+        return None
 
     def _torrent_from_http(self, data, save_path):
         ih = self.bt.add_torrent_bytes(data, save_path)
@@ -215,6 +284,7 @@ class Core:
                     asyncio.get_running_loop().run_in_executor(None, self._check_clipboard)
                 if n % 10 == 0:
                     self.bt.tick_slow()
+                    self._log_done()
                     self._watch_dir()
                     self._busy_check()
                 if n % 60 == 0:
@@ -420,7 +490,8 @@ def build_app(core: Core):
     @routes.post("/api/add")
     async def add(req):
         added, errors = [], []
-        opts = {"save_path": None, "category": "", "select_files": None, "priorities": None, "paused": False}
+        dups = []
+        opts = {"save_path": None, "category": "", "select_files": None, "priorities": None, "paused": False, "force": False}
         links, files = [], []
         if req.content_type.startswith("multipart/"):
             reader = await req.multipart()
@@ -435,6 +506,8 @@ def build_app(core: Core):
                     opts["select_files"] = (await part.text()) == "1"
                 elif part.name == "paused":
                     opts["paused"] = (await part.text()) == "1"
+                elif part.name == "force":
+                    opts["force"] = (await part.text()) == "1"
                 elif part.name == "priorities":
                     opts["priorities"] = json.loads(await part.text())  # {文件名: [优先级...]}
         else:
@@ -445,12 +518,17 @@ def build_app(core: Core):
             if "select_files" in b:
                 opts["select_files"] = bool(b["select_files"])
             opts["paused"] = bool(b.get("paused"))
+            opts["force"] = bool(b.get("force"))
             headers = b.get("headers") or {}
         if opts["category"] and not opts["save_path"]:
             cat = S.get("categories", {}).get(opts["category"])
             if cat and cat.get("save_path"):
                 opts["save_path"] = cat["save_path"]
         for fname, data in files:
+            d = core.find_dup(data=data, save_path=opts["save_path"], force=opts["force"])
+            if d:
+                dups.append(dict(d, src=fname))
+                continue
             try:
                 pr = (opts["priorities"] or {}).get(fname)
                 added.append(core.bt.add_torrent_bytes(data, opts["save_path"], opts["category"], pr, paused=opts["paused"]))
@@ -460,13 +538,17 @@ def build_app(core: Core):
             line = line.strip()
             if not line:
                 continue
+            d = core.find_dup(link=line, save_path=opts["save_path"], force=opts["force"])
+            if d:
+                dups.append(dict(d, src=line))
+                continue
             try:
                 kind, tid = core.add_link(line, opts["save_path"], opts["category"], opts["select_files"],
                                           headers if not req.content_type.startswith("multipart/") else None, opts["paused"])
                 added.append(tid)
             except Exception as e:
                 errors.append(f"{line[:50]}: {e}")
-        return web.json_response({"added": added, "errors": errors})
+        return web.json_response({"added": added, "errors": errors, "dups": dups})
 
     # ---------- 操作 ----------
     @routes.post("/api/action")

@@ -571,5 +571,10 @@
 "映射失败，观察中": "mapping failed, checking…",
 "所有种子一起选：": "Apply to all torrents:",
 "全部文件": "All files",
-"只要 &gt;100MB": "Only >100MB"
+"只要 &gt;100MB": "Only >100MB",
+"下载过": "downloaded",
+"文件已经存在": "file already exists",
+"这些以前下过，或者文件已经在保存位置里了：": "You downloaded these before, or the files are already in the save folder:",
+"还要再下载一次吗？": "Download them again?",
+"已经在列表里了：": "Already in your list: "
 }

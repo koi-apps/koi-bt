@@ -389,11 +389,33 @@ async function doAdd(){
   previews.forEach(p=>{if(p.error||!p.include)return;pr[p.filename]=p.picker.priorities(Math.max(...p.files.map(f=>f.index))+1)});
   fd.append('priorities',JSON.stringify(pr));
   pickedFiles.forEach((f,i)=>{ if(previews[i]&&previews[i].include&&!previews[i].error) fd.append('files',f,f.name) });
-  const r=await(await fetch('/api/add',{method:'POST',body:fd})).json();
+  let r=await(await fetch('/api/add',{method:'POST',body:fd})).json();
   closeM('m-add');
+  const dups=r.dups||[], again=dups.filter(d=>d.kind!=='exists'), here=dups.filter(d=>d.kind==='exists');
+  let added=(r.added||[]).length;
+  // 以前下过 / 文件已经在硬盘上：问一下要不要再下
+  if(again.length){
+    const day=t=>new Date(t*1000).toLocaleDateString();
+    const lines=again.map(d=>'• '+d.name+'  '+(d.kind==='seen'?'（'+day(d.at)+' '+I18N.t('下载过')+'）':'（'+I18N.t('文件已经存在')+'）'));
+    if(confirm(I18N.t('这些以前下过，或者文件已经在保存位置里了：')+'\n\n'+lines.join('\n')+'\n\n'+I18N.t('还要再下载一次吗？'))){
+      fd.set('force','1'); fd.set('links',again.filter(d=>!pickedFiles.some(f=>f.name===d.src)).map(d=>d.src).join('\n'));
+      fd.delete('files'); pickedFiles.forEach(f=>{ if(again.some(d=>d.src===f.name)) fd.append('files',f,f.name) });
+      const r2=await(await fetch('/api/add',{method:'POST',body:fd})).json();
+      added+=(r2.added||[]).length; (r.errors=r.errors||[]).push(...(r2.errors||[]));
+    }
+  }
   if(r.errors&&r.errors.length)alert('有些没加进去：\n'+r.errors.join('\n'));
-  if(r.added&&r.added.length)toast(`已添加 ${r.added.length} 个任务`);
-  poll1();
+  if(added)toast(`已添加 ${added} 个任务`);
+  if(here.length){
+    toast(I18N.t('已经在列表里了：')+here.map(d=>d.name).join('、'));
+    await poll1(); jumpTo(here[0].id);
+  } else poll1();
+}
+// 跳到某个任务：切到「全部」、滚过去、闪一下
+function jumpTo(id){
+  const go=()=>{ const el=document.querySelector(`.row[data-id="${id}"]`); if(!el)return false;
+    el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),2200); return true };
+  if(!go()){ const all=document.querySelector('.tab[data-f="all"]'); if(all)all.click(); setTimeout(go,300) }
 }
 let dragN=0;
 window.addEventListener('dragenter',e=>{if(document.querySelector('.mask.on'))return;e.preventDefault();dragN++;$('dragAll').classList.add('on')});

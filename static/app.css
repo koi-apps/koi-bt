@@ -210,3 +210,6 @@ table.ftbl .tw{display:inline-block;width:12px;color:var(--sub)}
 .lh.r{justify-self:end}
 @media (max-width:760px){.listhead{grid-template-columns:20px 1fr auto auto}.lh-acts{display:none}}
 .lh-all{cursor:pointer;color:var(--text);font-size:13px;margin-right:10px;user-select:none}
+
+.row.flash{animation:koiflash 1s ease-in-out 2}
+@keyframes koiflash{50%{box-shadow:0 0 0 2px var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--panel))}}
