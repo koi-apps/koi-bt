@@ -200,7 +200,7 @@ const pickers = {};
 class FilePicker {
   /* 文件树：按文件夹折叠、文件夹整体勾选（三态）、点表头排序。勾选只改数据，重画时保持滚动位置。 */
   constructor(key, el, files, opt={}) {
-    this.key=key; this.opt=opt; this.files=files;
+    this.key=key; this.opt=opt; this.files=files=files.filter(f=>!/(^|\/)\.pad\//.test(f.path));   // 混合种子里的 .pad 对齐文件不用给人看
     this.checked={}; this.prio={}; this.closed=new Set();
     files.forEach(f=>{ this.checked[f.index]=opt.allChecked?true:(f.priority===undefined||f.priority>0); this.prio[f.index]=f.priority>0?f.priority:4 });
     this.sort={k:'name',d:1};
@@ -337,6 +337,13 @@ function pvInclude(i,v){ previews[i].include=v; renderPreview() }
 function pvRemove(i){ previews.splice(i,1); pickedFiles.splice(i,1); Object.keys(pickers).filter(k=>k.startsWith('pv')).forEach(k=>delete pickers[k]);
   previews.forEach((p,j)=>{ if(p.picker){ p.picker.key='pv'+j; pickers['pv'+j]=p.picker } }); if(curPv>=previews.length)curPv=Math.max(0,previews.length-1); renderPreview() }
 function pvShow(i){ curPv=i; renderPreview() }
+function pvIncludeAll(v){ previews.forEach(p=>{ if(!p.error)p.include=v }); renderTaskRows() }
+// 批量：对所有种子的文件一起勾选
+function pvBulk(kind){
+  const fn={all:()=>true,video:f=>VIDEO.test(f.path),sub:f=>VIDEO.test(f.path)||KIND(f.path)==='字幕',big:f=>f.size>100*2**20}[kind];
+  previews.forEach(p=>{ if(p.picker) p.picker.apply(fn) });
+  renderPreview();
+}
 function renderPreview(){
   const box=$('a-preview');
   $('m-add').querySelector('.dlg').classList.toggle('wide-add',previews.length>0);
@@ -344,7 +351,8 @@ function renderPreview(){
   if(!previews.length){box.innerHTML='';updateAddSummary();return}
   previews.forEach((p,i)=>{ if(p.include===undefined)p.include=!p.error;
     if(!p.error&&!p.picker) p.picker=new FilePicker('pv'+i,null,p.files,{allChecked:true,height:230,onChange:()=>renderTaskRows()}) });
-  box.innerHTML=`<div class="tasks-wrap"><table class="t tasks" id="a-tasks"></table></div><div id="a-files"></div>`;
+  const bulk=previews.filter(p=>!p.error).length>1?`<div class="bulk"><span class="sub small">所有种子一起选：</span><span class="chips"><button onclick="pvBulk('all')">全部文件</button><button onclick="pvBulk('video')">只要视频</button><button onclick="pvBulk('sub')">视频+字幕</button><button onclick="pvBulk('big')">只要 &gt;100MB</button></span></div>`:'';
+  box.innerHTML=`${bulk}<div class="tasks-wrap"><table class="t tasks" id="a-tasks"></table></div><div id="a-files"></div>`;
   renderTaskRows();
   const p=previews[curPv];
   if(p&&!p.error){ $('a-files').innerHTML=`<div class="sub small" style="margin:10px 0 2px">📂 <b class="notr">${esc(p.name)}</b> 的文件</div><div id="a-picker"></div>`; p.picker.attach($('a-picker')) }
@@ -353,13 +361,14 @@ function renderPreview(){
 }
 function renderTaskRows(){
   const t=$('a-tasks'); if(!t)return;
-  t.innerHTML=`<tr><th style="width:28px"></th><th>种子（${previews.length} 个）</th><th style="width:110px">已选文件</th><th style="width:150px">大小</th><th style="width:34px"></th></tr>`+
+  const ok=previews.filter(p=>!p.error), allOn=ok.length&&ok.every(p=>p.include);
+  t.innerHTML=`<tr><th style="width:30px"><input type="checkbox" ${allOn?'checked':''} onchange="pvIncludeAll(this.checked)" title="全选 / 全不选"></th><th>种子（${previews.length} 个）</th><th style="width:64px">文件</th><th style="width:150px">大小</th><th style="width:34px"></th></tr>`+
     previews.map((p,i)=>{ if(p.error) return `<tr><td></td><td class="bad" colspan="3">${esc(p.filename)}：${esc(p.error)}</td><td><button class="ghost" onclick="pvRemove(${i})" title="移除">✕</button></td></tr>`;
       const [n,s]=p.picker.total();
       return `<tr class="${i===curPv?'cur':''} ${p.include?'':'off'}" onclick="if(!event.target.closest('input,button'))pvShow(${i})" style="cursor:pointer">
         <td><input type="checkbox" ${p.include?'checked':''} onchange="pvInclude(${i},this.checked)" title="是否添加这个种子"></td>
         <td class="tname"><span class="notr" title="${esc(p.name)}">${esc(p.name)}</span></td>
-        <td>${n}/${p.files.length}</td><td style="white-space:nowrap">${fmtB(s)}${s!==p.size?` <span class="sub small">/ ${fmtB(p.size)}</span>`:''}</td>
+        <td>${n}/${p.picker.files.length}</td><td style="white-space:nowrap">${fmtB(s)}${s!==p.size?` <span class="sub small">/ ${fmtB(p.size)}</span>`:''}</td>
         <td><button class="ghost" onclick="pvRemove(${i})" title="移除">✕</button></td></tr>` }).join('');
   updateAddSummary();
 }

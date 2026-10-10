@@ -7,7 +7,7 @@ from pathlib import Path
 APP_NAME = "KOI BT"
 GITHUB_REPO = "koi-apps/koi-bt"     # 官方发布仓库：更新从这里的 Releases 拿
 OFFICIAL_UPDATE_URL = f"https://github.com/{GITHUB_REPO}/releases/latest/download"
-VERSION = "1.5.1"
+VERSION = "1.5.2"
 UI_PORT = 18790
 
 BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))

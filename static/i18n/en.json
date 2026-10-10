@@ -568,5 +568,8 @@
 "粘贴到 PotPlayer / VLC 里播放": "Paste into PotPlayer / VLC to play",
 "这个格式浏览器播不了，点「复制播放地址」用 PotPlayer 或 VLC 打开": "Your browser can't play this format. Click \"Copy stream URL\" and open it in PotPlayer or VLC",
 "观察中": "checking…",
-"映射失败，观察中": "mapping failed, checking…"
+"映射失败，观察中": "mapping failed, checking…",
+"所有种子一起选：": "Apply to all torrents:",
+"全部文件": "All files",
+"只要 &gt;100MB": "Only >100MB"
 }
