@@ -566,5 +566,7 @@
 "全屏（F / 双击画面）": "Full screen (F / double-click)",
 "复制播放地址": "Copy stream URL",
 "粘贴到 PotPlayer / VLC 里播放": "Paste into PotPlayer / VLC to play",
-"这个格式浏览器播不了，点「复制播放地址」用 PotPlayer 或 VLC 打开": "Your browser can't play this format. Click \"Copy stream URL\" and open it in PotPlayer or VLC"
+"这个格式浏览器播不了，点「复制播放地址」用 PotPlayer 或 VLC 打开": "Your browser can't play this format. Click \"Copy stream URL\" and open it in PotPlayer or VLC",
+"观察中": "checking…",
+"映射失败，观察中": "mapping failed, checking…"
 }

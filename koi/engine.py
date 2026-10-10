@@ -1,5 +1,6 @@
 """BT 内核：libtorrent 会话、任务管理、红绿灯、吸血屏蔽、分享率、边下边播的数据支持。"""
 import ipaddress
+import os
 import re
 import shutil
 import threading
@@ -230,11 +231,33 @@ class Engine:
         h.save_resume_data(lt.save_resume_flags_t.save_info_dict)
         return ih
 
+    @staticmethod
+    def _fix_mangled_names(atp):
+        """旧版群晖套件没设 UTF-8，libtorrent 把文件名里每个中文字符都写成了「.」。
+        找到这种文件就改回正确的名字，免得任务显示 0% 重新下载、边下边播找不到文件。"""
+        if os.name == "nt" or not atp.ti:
+            return
+        mangle = lambda x: "".join(c if ord(c) < 128 else "." for c in x)
+        fs = atp.ti.files()
+        for i in range(fs.num_files()):
+            rel = fs.file_path(i)
+            bad = mangle(rel)
+            if bad == rel:
+                continue
+            real, old = os.path.join(atp.save_path, rel), os.path.join(atp.save_path, bad)
+            if not os.path.exists(real) and os.path.exists(old):
+                try:
+                    os.renames(old, real)
+                    print("文件名修复:", rel)
+                except OSError as e:
+                    print("文件名修复失败", rel, e)
+
     def _load_resumes(self):
         import json
         for f in C.RESUME_DIR.glob("*.fastresume"):
             try:
                 atp = lt.read_resume_data(f.read_bytes())
+                self._fix_mangled_names(atp)
                 h = self.ses.add_torrent(atp)
                 ih = ih_of(h)
                 self.first_seen[ih] = time.time()
@@ -478,6 +501,7 @@ class Engine:
 
     def _seed_info(self, st, ih, paused):
         """正在做种时给界面：还要做多久（按设置的时长 / 分享率，哪个先到算哪个）。"""
+        # 计时用 finished_duration：只勾了部分文件的任务下完后是 finished 而不是 seeding，seeding_duration 不会走
         if not (st.is_seeding or st.is_finished) or paused:
             return None
         s = self.settings
@@ -485,7 +509,7 @@ class Engine:
             return {"left": None, "why": "own"}
         left = None
         if s["seed_time_limit_min"] > 0:
-            left = max(0, s["seed_time_limit_min"] * 60 - int(st.seeding_duration.total_seconds()))
+            left = max(0, s["seed_time_limit_min"] * 60 - int(st.finished_duration.total_seconds()))
         ratio_target = s["ratio_limit"] if s["ratio_limit"] > 0 else None
         return {"left": left, "ratio_target": ratio_target, "why": "limit" if (left is not None or ratio_target) else "forever"}
 
@@ -662,7 +686,7 @@ class Engine:
             ratio = st.all_time_upload / max(1, st.total_wanted_done)
             stop = (not s["seed_after_done"]) \
                 or (s["ratio_limit"] > 0 and ratio >= s["ratio_limit"]) \
-                or (s["seed_time_limit_min"] > 0 and st.seeding_duration.total_seconds() >= s["seed_time_limit_min"] * 60)
+                or (s["seed_time_limit_min"] > 0 and st.finished_duration.total_seconds() >= s["seed_time_limit_min"] * 60)
             if stop:
                 h.unset_flags(lt.torrent_flags.auto_managed)
                 h.pause()

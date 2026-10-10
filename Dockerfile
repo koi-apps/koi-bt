@@ -2,6 +2,8 @@
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
     KOI_HOME=/config \
     KOI_DOCKER=1 \
     KOI_DOWNLOAD_DIR=/downloads

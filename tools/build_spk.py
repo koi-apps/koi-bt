@@ -58,6 +58,7 @@ def png(size):
 
 START_STOP = r'''#!/bin/sh
 # KOI BT 启动 / 停止 / 状态（DSM 7）
+# 一定要用 UTF-8 环境启动：DSM 默认没有 LANG，libtorrent 会把文件名里的中文写成「.」
 PKG_DIR="/var/packages/koi-bt/target"
 VAR_DIR="${SYNOPKG_PKGVAR:-/var/packages/koi-bt/var}"
 PID_FILE="${VAR_DIR}/koi-bt.pid"
@@ -82,7 +83,7 @@ case "$1" in
         DL="$(share_path)"
         mkdir -p "${DL}"
         cd "${PKG_DIR}/app" || exit 1
-        env KOI_HOME="${VAR_DIR}" KOI_DOCKER=1 KOI_DOWNLOAD_DIR="${DL}" \
+        env LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 KOI_HOME="${VAR_DIR}" KOI_DOCKER=1 KOI_DOWNLOAD_DIR="${DL}" \
             KOI_PASSWORD_FILE="${VAR_DIR}/initial_password" \
             KOI_UPDATE_HINT="请在群晖套件中心更新 KOI BT" \
             PYTHONPATH="${PKG_DIR}/lib" PYTHONUNBUFFERED=1 \
