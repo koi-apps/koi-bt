@@ -107,9 +107,10 @@ class Engine:
             "download_rate_limit": int(dl) * 1024,
             "upload_rate_limit": int(ul) * 1024,
             "connections_limit": int(s["max_connections"]),
-            "active_downloads": int(s["max_active_downloads"]),
-            "active_seeds": 10,
-            "active_limit": int(s["max_active_downloads"]) + 20,
+            # 同时下载几个：0 = 不限制（libtorrent 里用 -1 表示不限）
+            "active_downloads": int(s["max_active_downloads"]) if int(s["max_active_downloads"]) > 0 else -1,
+            "active_seeds": 10 if int(s["max_active_downloads"]) > 0 else -1,
+            "active_limit": int(s["max_active_downloads"]) + 20 if int(s["max_active_downloads"]) > 0 else -1,
             "dont_count_slow_torrents": True,
             "dht_bootstrap_nodes": "dht.libtorrent.org:25401,router.bittorrent.com:6881,"
             "router.utorrent.com:6881,dht.transmissionbt.com:6881",
@@ -204,9 +205,16 @@ class Engine:
         if paused:
             atp.flags |= lt.torrent_flags.paused
             atp.flags &= ~lt.torrent_flags.auto_managed
+        else:
+            # 拿文件列表不排队：排队中的任务是暂停的，磁力链会一直拿不到文件列表、迟迟弹不出选文件窗口。
+            # 先手动启动，拿到文件列表后再交回队列管理（见 metadata_received_alert）。
+            atp.flags &= ~lt.torrent_flags.auto_managed
+            atp.flags &= ~lt.torrent_flags.paused
         with self.lock:
             h = self.ses.add_torrent(atp)
         ih = ih_of(h)
+        if not paused:
+            self.meta.setdefault(ih, {})["queue_after_meta"] = True
         if atp.flags & lt.torrent_flags.default_dont_download:
             self.pending_select.add(ih)
         return self._after_add(h, category)
@@ -258,6 +266,9 @@ class Engine:
             try:
                 atp = lt.read_resume_data(f.read_bytes())
                 self._fix_mangled_names(atp)
+                no_meta = atp.ti is None and not (atp.flags & lt.torrent_flags.paused)
+                if no_meta:   # 还没拿到文件列表的磁力链：同样先不排队，拿到再交回队列
+                    atp.flags &= ~lt.torrent_flags.auto_managed
                 h = self.ses.add_torrent(atp)
                 ih = ih_of(h)
                 self.first_seen[ih] = time.time()
@@ -266,6 +277,8 @@ class Engine:
                     self.meta[ih] = json.loads(mf.read_text("utf-8"))
                     if self.meta[ih].get("pending_select"):
                         self.pending_select.add(ih)
+                if no_meta:
+                    self.meta.setdefault(ih, {})["queue_after_meta"] = True
             except Exception as e:
                 print("恢复失败", f.name, e)
 
@@ -807,6 +820,8 @@ class Engine:
             elif t == "metadata_received_alert":
                 h = a.handle
                 ih = ih_of(h)
+                if self.meta.get(ih, {}).pop("queue_after_meta", None):
+                    h.set_flags(lt.torrent_flags.auto_managed)     # 拿到文件列表了，回到正常排队
                 if ih in self.pending_select:
                     fs = h.torrent_file().files()
                     real = [i for i in range(fs.num_files()) if not fs.file_flags(i) & fs.flag_pad_file]

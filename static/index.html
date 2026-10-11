@@ -168,7 +168,7 @@
     <div class="three">
       <div><label class="l">监听端口</label><input id="st-listen_port" type="number" min="1024" max="65535"></div>
       <div><label class="l">最大连接数</label><input id="st-max_connections" type="number" min="50"></div>
-      <div><label class="l">同时下载几个</label><input id="st-max_active_downloads" type="number" min="1"></div>
+      <div><label class="l">同时下载几个（0 = 不限制，全部一起下）</label><input id="st-max_active_downloads" type="number" min="0"></div>
     </div>
     <label class="l">加密</label>
     <select id="st-encryption"><option value="prefer">优先加密（推荐，防运营商识别限速）</option><option value="require">强制加密（连的人会变少）</option><option value="disable">不加密</option></select>

@@ -576,5 +576,6 @@
 "文件已经存在": "file already exists",
 "这些以前下过，或者文件已经在保存位置里了：": "You downloaded these before, or the files are already in the save folder:",
 "还要再下载一次吗？": "Download them again?",
-"已经在列表里了：": "Already in your list: "
+"已经在列表里了：": "Already in your list: ",
+"同时下载几个（0 = 不限制，全部一起下）": "Max simultaneous downloads (0 = no limit)"
 }
