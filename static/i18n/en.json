@@ -577,5 +577,9 @@
 "这些以前下过，或者文件已经在保存位置里了：": "You downloaded these before, or the files are already in the save folder:",
 "还要再下载一次吗？": "Download them again?",
 "已经在列表里了：": "Already in your list: ",
-"同时下载几个（0 = 不限制，全部一起下）": "Max simultaneous downloads (0 = no limit)"
+"同时下载几个（0 = 不限制，全部一起下）": "Max simultaneous downloads (0 = no limit)",
+"慢任务自动让位：有任务在排队时，速度一直低于": "Let slow tasks yield: when tasks are queued, move tasks slower than",
+"KB/s 超过": "KB/s for more than",
+"分钟的任务挪到队尾，排队的按做种人数从多到少先下": "minutes to the end of the queue, and start queued tasks with the most seeds first",
+"太慢了，先让别的任务下": "Too slow, letting other tasks go first"
 }

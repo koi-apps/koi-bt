@@ -170,6 +170,7 @@
       <div><label class="l">最大连接数</label><input id="st-max_connections" type="number" min="50"></div>
       <div><label class="l">同时下载几个（0 = 不限制，全部一起下）</label><input id="st-max_active_downloads" type="number" min="0"></div>
     </div>
+    <label class="chk"><input type="checkbox" id="st-auto_requeue_slow"> 慢任务自动让位：有任务在排队时，速度一直低于 <input id="st-slow_kb" type="number" min="1" style="width:70px"> KB/s 超过 <input id="st-slow_minutes" type="number" min="1" style="width:60px"> 分钟的任务挪到队尾，排队的按做种人数从多到少先下</label>
     <label class="l">加密</label>
     <select id="st-encryption"><option value="prefer">优先加密（推荐，防运营商识别限速）</option><option value="require">强制加密（连的人会变少）</option><option value="disable">不加密</option></select>
     <label class="l">绑定网卡 IP（挂 VPN 时填 VPN 的 IP，VPN 断了就不会用真实 IP 下载；留空 = 不绑定）</label><input id="st-bind_interface" placeholder="例如 10.8.0.2">

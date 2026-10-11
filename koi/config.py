@@ -7,7 +7,7 @@ from pathlib import Path
 APP_NAME = "KOI BT"
 GITHUB_REPO = "koi-apps/koi-bt"     # 官方发布仓库：更新从这里的 Releases 拿
 OFFICIAL_UPDATE_URL = f"https://github.com/{GITHUB_REPO}/releases/latest/download"
-VERSION = "1.5.4"
+VERSION = "1.5.5"
 UI_PORT = 18790
 
 BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
@@ -73,6 +73,9 @@ DEFAULT_SETTINGS = {
     "listen_port": 51413,
     "max_connections": 500,
     "max_active_downloads": 5,
+    "auto_requeue_slow": True,     # 有任务在排队时，慢任务自动挪到队尾，先下种子多的
+    "slow_kb": 50,
+    "slow_minutes": 10,
     "auto_trackers": True,
     "tracker_url": "https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best.txt",
     "encryption": "prefer",        # prefer / require / disable

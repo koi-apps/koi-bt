@@ -550,20 +550,24 @@ class Engine:
         peers.sort(key=lambda p: -(p["down"] + p["up"]))
         trackers = []
         for t in h.trackers():
-            msg, status = "", "未联系"
+            msg = ""
             seeds = peers_n = -1
+            # 一个 tracker 有好几条线路（IPv4 / IPv6 / 每块网卡），只要有一条通就算正常。
+            # 以前取最后一条，没有 IPv6 的机器上会把能用的 tracker 都显示成「失败」
+            states = set()
             for ep in t.get("endpoints", []):
                 for ih_ in ep.get("info_hashes", [])[:1]:
                     if ih_.get("message"):
                         msg = ih_["message"]
                     if ih_.get("updating"):
-                        status = "正在联系"
+                        states.add("正在联系")
                     elif ih_.get("fails", 0) > 0:
-                        status = "失败"
+                        states.add("失败")
                     elif ih_.get("start_sent"):
-                        status = "正常"
+                        states.add("正常")
                     seeds = max(seeds, ih_.get("scrape_complete", -1))
                     peers_n = max(peers_n, ih_.get("scrape_incomplete", -1))
+            status = next((x for x in ("正常", "正在联系", "失败") if x in states), "未联系")
             trackers.append({"url": t["url"], "tier": t["tier"], "status": status, "message": msg, "seeds": seeds, "peers": peers_n})
         trackers.sort(key=lambda t: ({"正常": 0, "正在联系": 1, "未联系": 2, "失败": 3}[t["status"]], t["tier"]))
         # 分块图：压缩到 300 格，每格 = 已下完的比例
@@ -618,12 +622,14 @@ class Engine:
         client = p.client.decode("utf-8", "replace") if isinstance(p.client, bytes) else str(p.client)
         pid = self._pid_prefix(p)
         extra = [x.strip().lower() for x in self.settings["ban_list_extra"].split(",") if x.strip()]
-        if LEECH_PEER_ID.match(pid) or LEECH_CLIENT.search(client):
+        # 有我们要的数据、或者正在给我们传的，一律不封：很多资源（尤其中文资源）做种的大部分是迅雷，
+        # 见名就封会把种子源全封掉，任务一直 0%。只封真正只拿不给的。
+        if p.progress >= 0.999 or p.flags & lt.peer_info.seed or p.total_download > 0 or p.down_speed > 0:
+            return None
+        named = LEECH_PEER_ID.match(pid) or LEECH_CLIENT.search(client) \
+            or any(kw in (client + " " + pid).lower() for kw in extra)
+        if named and p.total_upload > 2 * 1024 * 1024:   # 黑名单客户端：从我们这拿了 2MB 以上、一点都没给
             return client or pid
-        low = (client + " " + pid).lower()
-        for kw in extra:
-            if kw in low:
-                return client or pid
         # 行为检测：从我们这拿了 20MB 以上，自己却一直报告进度 0，还一点都不给我们
         if p.total_upload > 20 * 1024 * 1024 and p.progress == 0 and p.total_download == 0:
             return (client or pid or "未知") + "（只拿不给）"
@@ -687,8 +693,9 @@ class Engine:
         return down, up
 
     def tick_slow(self):
-        """每 5 秒：吸血扫描、分享率、边下边播的优先级。"""
+        """每 5 秒：吸血扫描、分享率、边下边播的优先级、慢任务让位。"""
         self.scan_leechers()
+        self._rebalance_queue()
         s = self.settings
         for h in self.ses.get_torrents():
             st = h.status()
@@ -707,6 +714,52 @@ class Engine:
                 self.meta.setdefault(ih, {})["seed_stopped"] = True
                 self._save_meta(ih)
         self._stream_deadlines()
+
+    def _rebalance_queue(self):
+        """限制了同时下载数、又有任务在排队时：
+        - 一直很慢的任务挪到队尾，把位置让给排队的
+        - 排队的任务按 tracker 上的做种人数排序，种子多的先上"""
+        s = self.settings
+        if not s.get("auto_requeue_slow") or int(s["max_active_downloads"]) <= 0:
+            self._slow_since = {}
+            return
+        now = time.time()
+        if not hasattr(self, "_slow_since"):
+            self._slow_since, self._requeued_at, self._last_scrape = {}, {}, 0
+        active, queued = [], []
+        for h in self.ses.get_torrents():
+            st = h.status()
+            if not st.has_metadata or st.is_finished or st.is_seeding or not (st.flags & lt.torrent_flags.auto_managed):
+                continue                                   # 手动强制开始的、还没文件列表的、下完的都不管
+            (queued if st.flags & lt.torrent_flags.paused else active).append((h, st))
+        if not queued:
+            self._slow_since = {}
+            return
+        # 每 10 分钟问一次 tracker：排队的任务各有多少人做种
+        if now - self._last_scrape > 600:
+            self._last_scrape = now
+            for h, st in queued:
+                h.scrape_tracker()
+        # 种子多的排前面（只在排队的那几个位置之间调换，不影响正在下的）
+        slots = sorted(st.queue_position for h, st in queued)
+        ranked = sorted(queued, key=lambda x: -max(x[1].num_complete, x[1].num_seeds, 0))
+        for pos, (h, st) in zip(slots, ranked):
+            if st.queue_position != pos:
+                h.queue_position_set(pos)
+        # 慢任务让位
+        limit = int(s["slow_kb"]) * 1024
+        for h, st in active:
+            ih = str(st.info_hash)
+            if st.download_payload_rate >= limit or now - self._requeued_at.get(ih, 0) < 1800 \
+                    or now - self.first_seen.get(ih, now) < 120:
+                self._slow_since.pop(ih, None)
+                continue
+            since = self._slow_since.setdefault(ih, now)
+            if now - since >= int(s["slow_minutes"]) * 60:
+                h.queue_position_bottom()
+                self._requeued_at[ih] = now
+                self._slow_since.pop(ih, None)
+                self.notify("info", "太慢了，先让别的任务下", st.name)
 
     def any_downloading(self):
         for h in self.ses.get_torrents():
