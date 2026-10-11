@@ -136,7 +136,25 @@ function toggleAll(on){ const vis=data.filter(pass); if(on) vis.forEach(t=>sel.a
 function tog(id,e){e.stopPropagation();sel.has(id)?sel.delete(id):sel.add(id);render()}
 document.addEventListener('click',e=>{const r=e.target.closest('.row');if(r&&!e.target.closest('button,input')){const id=r.dataset.id;if(e.shiftKey&&sel.size){const ids=data.filter(pass).map(t=>t.id);const a=ids.indexOf([...sel].pop()),b=ids.indexOf(id);ids.slice(Math.min(a,b),Math.max(a,b)+1).forEach(x=>sel.add(x))}else if(!e.ctrlKey&&!e.metaKey){const only=sel.size===1&&sel.has(id);sel.clear();if(!only)sel.add(id)}else{sel.has(id)?sel.delete(id):sel.add(id)}render()}});
 async function act(a){await api('/api/action',{action:a,ids:[...sel]});poll1()}
-async function a1(a,id){await api('/api/action',{action:a,ids:[id]});poll1()}
+async function a1(a,id){
+  if(a==='open'&&!openLocal()) return showFolder(id);
+  await api('/api/action',{action:a,ids:[id]});poll1()}
+// 「打开文件夹」只有在本机窗口版才能直接打开；群晖 / Docker / 用手机或别的电脑远程访问时，改成显示位置
+function openLocal(){ return sum.env==='desktop' && ['127.0.0.1','localhost'].includes(location.hostname) }
+function showFolder(id){
+  const t=data.find(x=>x.id===id); if(!t)return;
+  const full=(t.save_path||'').replace(/\/+$/,'')+'/'+(t.name||'');
+  $('of-path').textContent=full;
+  const fs=$('of-fs');
+  if(sum.env==='synology'){
+    const share=full.replace(/^\/volume\d+/,'');
+    fs.href=`${location.protocol}//${location.hostname}:5000/?launchApp=SYNO.SDS.App.FileStation3.Instance&launchParam=${encodeURIComponent('openfile='+encodeURIComponent(share))}`;
+    fs.style.display='';
+  } else fs.style.display='none';
+  $('of-copy').textContent=I18N.t('复制路径');
+  openM('m-folder');
+}
+function copyFolder(){ navigator.clipboard.writeText($('of-path').textContent).then(()=>{$('of-copy').textContent=I18N.t('已复制')}) }
 async function allAct(a){await api('/api/action',{action:a,ids:data.map(t=>t.id)});poll1()}
 document.querySelectorAll('#tabs .tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('#tabs .tab').forEach(x=>x.classList.remove('on'));b.classList.add('on');filter=b.dataset.f;render()});
 $('q').oninput=render; $('catFilter').onchange=render;

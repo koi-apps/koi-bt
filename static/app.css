@@ -213,3 +213,5 @@ table.ftbl .tw{display:inline-block;width:12px;color:var(--sub)}
 
 .row.flash{animation:koiflash 1s ease-in-out 2}
 @keyframes koiflash{50%{box-shadow:0 0 0 2px var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--panel))}}
+.btns a.btn{display:inline-flex;align-items:center;padding:6px 14px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);text-decoration:none;font-size:13px}
+.btns a.btn:hover{background:var(--hover)}

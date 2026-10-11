@@ -95,6 +95,13 @@
   <div class="btns"><button onclick="closeM('m-del')">取消</button><button class="primary" style="background:var(--red)" onclick="doRemove()">删除</button></div>
 </div></div>
 
+<div class="mask" id="m-folder"><div class="dlg">
+  <h3>📂 文件位置</h3>
+  <p class="mono" id="of-path" style="word-break:break-all"></p>
+  <p class="sub small">在群晖上可以用 File Station 打开；电脑上可以把这个路径粘贴到文件管理器的地址栏。</p>
+  <div class="btns"><a id="of-fs" class="btn" target="_blank" rel="noopener">在 File Station 里打开</a><button id="of-copy" onclick="copyFolder()">复制路径</button><button class="primary" onclick="closeM('m-folder')">好的</button></div>
+</div></div>
+
 <!-- 选文件（磁力链拿到信息后） -->
 <div class="mask" id="m-select"><div class="dlg" style="width:760px">
   <h3>📂 选择要下载的文件</h3>

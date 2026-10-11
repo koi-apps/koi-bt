@@ -7,7 +7,7 @@ from pathlib import Path
 APP_NAME = "KOI BT"
 GITHUB_REPO = "koi-apps/koi-bt"     # 官方发布仓库：更新从这里的 Releases 拿
 OFFICIAL_UPDATE_URL = f"https://github.com/{GITHUB_REPO}/releases/latest/download"
-VERSION = "1.5.5"
+VERSION = "1.5.6"
 UI_PORT = 18790
 
 BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
@@ -77,6 +77,7 @@ DEFAULT_SETTINGS = {
     "slow_kb": 50,
     "slow_minutes": 10,
     "auto_trackers": True,
+    "metadata_cache": True,        # 磁力链同时去公开种子缓存按哈希拿文件列表（像迅雷那样秒出）
     "tracker_url": "https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best.txt",
     "encryption": "prefer",        # prefer / require / disable
     "bind_interface": "",          # 绑定网卡（挂 VPN 时防泄露），空 = 全部

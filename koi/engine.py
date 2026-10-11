@@ -1,4 +1,5 @@
 """BT 内核：libtorrent 会话、任务管理、红绿灯、吸血屏蔽、分享率、边下边播的数据支持。"""
+import hashlib
 import ipaddress
 import os
 import re
@@ -36,6 +37,10 @@ STATE_TEXT = {
 
 def ih_of(h):
     return str(h.info_hash())
+
+
+# 公开的种子缓存：按 info hash 直接拿 .torrent，不用等从别人那里传文件列表
+METADATA_CACHES = ["https://itorrents.org/torrent/{HASH}.torrent"]
 
 
 class Engine:
@@ -106,6 +111,9 @@ class Engine:
             | lt.alert_category.port_mapping,
             "download_rate_limit": int(dl) * 1024,
             "upload_rate_limit": int(ul) * 1024,
+            # 限速只算真正传给别人的数据。默认会把下载时回的 TCP 确认包也算进上传额度，
+            # 上传限得低（比如 50KB/s）时，光确认包就把额度占满，下载被拖到几 MB/s
+            "rate_limit_ip_overhead": False,
             "connections_limit": int(s["max_connections"]),
             # 同时下载几个：0 = 不限制（libtorrent 里用 -1 表示不限）
             "active_downloads": int(s["max_active_downloads"]) if int(s["max_active_downloads"]) > 0 else -1,
@@ -215,9 +223,41 @@ class Engine:
         ih = ih_of(h)
         if not paused:
             self.meta.setdefault(ih, {})["queue_after_meta"] = True
+        self._fetch_cached_metadata(ih)
         if atp.flags & lt.torrent_flags.default_dont_download:
             self.pending_select.add(ih)
         return self._after_add(h, category)
+
+    def _fetch_cached_metadata(self, ih):
+        """磁力链：在从 DHT / 别人那里拿文件列表的同时，去公开种子缓存按哈希直接下 .torrent。
+        谁先到用谁。拿到后用 set_metadata 塞给任务，后面的选文件、排队流程不变。"""
+        if not self.settings.get("metadata_cache", True) or not re.fullmatch(r"[0-9a-f]{40}", ih):
+            return
+
+        def run():
+            for tpl in METADATA_CACHES:
+                h = self.find(ih)
+                if not h or h.status().has_metadata:
+                    return
+                try:
+                    req = urllib.request.Request(tpl.format(HASH=ih.upper(), hash=ih), headers={"User-Agent": "Mozilla/5.0"})
+                    with urllib.request.urlopen(req, timeout=20) as r:
+                        data = r.read(20 * 1024 * 1024)
+                    d = lt.bdecode(data)
+                    if not d or b"info" not in d:
+                        continue
+                    info = lt.bencode(d[b"info"])
+                    if hashlib.sha1(info).hexdigest() != ih:      # 缓存给的不对就不用
+                        continue
+                    h = self.find(ih)
+                    if h and not h.status().has_metadata:
+                        h.set_metadata(info)
+                        print("从种子缓存拿到文件列表：", ih)
+                    return
+                except Exception:
+                    continue
+
+        threading.Thread(target=run, name="meta-cache", daemon=True).start()
 
     def add_torrent_bytes(self, data, save_path=None, category="", priorities=None, select_files=None, paused=False):
         atp = lt.add_torrent_params()
@@ -279,6 +319,7 @@ class Engine:
                         self.pending_select.add(ih)
                 if no_meta:
                     self.meta.setdefault(ih, {})["queue_after_meta"] = True
+                    self._fetch_cached_metadata(ih)
             except Exception as e:
                 print("恢复失败", f.name, e)
 

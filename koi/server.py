@@ -175,6 +175,8 @@ class Core:
             "history": list(self.bt.history)[-120:],
             "event_id": self.event_id,
             "player": bool(winsys.find_player()),
+            # 在哪跑：desktop = 本机窗口版；synology = 群晖套件；docker = 其他 NAS / 服务器
+            "env": "synology" if os.path.isdir("/usr/syno") else ("docker" if os.environ.get("KOI_DOCKER") else "desktop"),
             "categories": self.settings.get("categories", {}),
             "update": self.updater.view(),
             "just_updated": self.just_updated,
