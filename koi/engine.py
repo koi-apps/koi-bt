@@ -739,6 +739,7 @@ class Engine:
         """每 5 秒：吸血扫描、分享率、边下边播的优先级、慢任务让位。"""
         self.scan_leechers()
         self._rebalance_queue()
+        self._auto_select()
         s = self.settings
         for h in self.ses.get_torrents():
             st = h.status()
@@ -757,6 +758,32 @@ class Engine:
                 self.meta.setdefault(ih, {})["seed_stopped"] = True
                 self._save_meta(ih)
         self._stream_deadlines()
+
+    def _auto_select(self):
+        """等选文件的任务：超过设定时间没人选，就自动开始（全部文件，或者只要 100MB 以上的视频）。"""
+        mins = int(self.settings.get("auto_select_minutes", 10))
+        if mins <= 0 or not self.pending_select:
+            return
+        now = time.time()
+        video = re.compile(r"\.(mp4|mkv|avi|mov|wmv|flv|webm|m4v|ts|rmvb|rm|mpg|mpeg|m2ts)$", re.I)
+        for ih in list(self.pending_select):
+            h = self.find(ih)
+            if not h or not h.status().has_metadata:
+                continue
+            m = self.meta.setdefault(ih, {})
+            since = m.setdefault("select_since", now)
+            if now - since < mins * 60:
+                continue
+            fs = h.torrent_file().files()
+            n = fs.num_files()
+            pr = [4] * n
+            if self.settings.get("auto_select_mode") == "video":
+                pr = [4 if video.search(fs.file_path(i)) and fs.file_size(i) > 100 * 2**20 else 0 for i in range(n)]
+                if not any(pr):                       # 一个大视频都没有就全下，免得什么都不下
+                    pr = [4] * n
+            m.pop("select_since", None)
+            self.set_file_priorities(ih, pr)
+            self.notify("info", "没选文件，已自动开始", h.status().name)
 
     def _rebalance_queue(self):
         """限制了同时下载数、又有任务在排队时：

@@ -7,7 +7,7 @@ from pathlib import Path
 APP_NAME = "KOI BT"
 GITHUB_REPO = "koi-apps/koi-bt"     # 官方发布仓库：更新从这里的 Releases 拿
 OFFICIAL_UPDATE_URL = f"https://github.com/{GITHUB_REPO}/releases/latest/download"
-VERSION = "1.5.7"
+VERSION = "1.5.8"
 UI_PORT = 18790
 
 BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
@@ -63,6 +63,8 @@ DEFAULT_SETTINGS = {
     "save_path": str(Path.home() / "Downloads"),
     "move_done_to": "",            # 下完后移动到（空 = 不移动）
     "select_files_on_add": True,   # 多文件种子添加时先让我选文件
+    "auto_select_minutes": 10,     # 等选文件超过这么多分钟没选，就自动开始（0 = 一直等）
+    "auto_select_mode": "all",     # 自动开始时下哪些：all 全部 / video 只要 100MB 以上的视频
     "clipboard_watch": True,       # 复制磁力链 / 种子链接自动弹出
     "watch_dir": "",               # 监视文件夹：丢进去的 .torrent 自动添加
     "keep_awake": True,            # 有任务在下载时阻止电脑睡眠

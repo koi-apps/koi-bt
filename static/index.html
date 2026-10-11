@@ -144,6 +144,7 @@
     <label class="l">下完后移动到（留空 = 不移动；有分类时会放进分类同名子文件夹）</label><input id="st-move_done_to" class="pathpick" data-kind="folder">
     <label class="l">监视文件夹（丢进去的 .torrent 自动添加，留空 = 关闭）</label><input id="st-watch_dir" class="pathpick" data-kind="folder">
     <label class="chk"><input type="checkbox" id="st-select_files_on_add"> 磁力链默认先选文件再下载</label>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0 8px 26px" class="small">忘了选的话，过 <input id="st-auto_select_minutes" type="number" min="0" style="width:64px"> 分钟自动开始，下载 <select id="st-auto_select_mode" style="width:auto"><option value="all">全部文件</option><option value="video">只要 100MB 以上的视频</option></select> <span class="sub">（填 0 = 一直等我选）</span></div>
     <label class="chk"><input type="checkbox" id="st-clipboard_watch"> 监听剪贴板：复制磁力链 / 下载链接后自动弹出</label>
     <label class="chk"><input type="checkbox" id="st-notify_done"> 下载完成时弹系统通知</label>
     <label class="chk"><input type="checkbox" id="st-keep_awake"> 有任务在下载时不让电脑睡眠</label>

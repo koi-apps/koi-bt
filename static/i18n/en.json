@@ -607,5 +607,10 @@
 "这个视频要登录或者是会员 / 私密视频，下载不了": "This video needs a login, membership or is private, so it can't be downloaded",
 "不支持这个网站": "This site isn't supported",
 "视频不存在或已被删除": "The video doesn't exist or was removed",
-"磁力链从公开种子缓存秒取文件列表（会把种子的指纹发给 itorrents.org）": "Get magnet file lists instantly from a public torrent cache (sends the torrent's info hash to itorrents.org)"
+"磁力链从公开种子缓存秒取文件列表（会把种子的指纹发给 itorrents.org）": "Get magnet file lists instantly from a public torrent cache (sends the torrent's info hash to itorrents.org)",
+"忘了选的话，过": "If I forget, start automatically after",
+"分钟自动开始，下载": "minutes and download",
+"只要 100MB 以上的视频": "Only videos over 100 MB",
+"（填 0 = 一直等我选）": "(0 = always wait for me)",
+"没选文件，已自动开始": "No files chosen, started automatically"
 }
