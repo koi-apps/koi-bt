@@ -9,7 +9,7 @@ ENV PYTHONUNBUFFERED=1 \
     KOI_DOWNLOAD_DIR=/downloads
 
 WORKDIR /app
-RUN pip install --no-cache-dir "libtorrent==2.1.1" "aiohttp>=3.9" "segno>=1.6" "cryptography>=42"
+RUN pip install --no-cache-dir "libtorrent==2.1.1" "aiohttp>=3.9" "segno>=1.6" "cryptography>=42" "aiohttp-socks>=0.10" "yt-dlp>=2026.8" "imageio-ffmpeg>=0.6"
 COPY koi ./koi
 COPY static ./static
 COPY browser_extension ./browser_extension

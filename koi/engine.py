@@ -13,6 +13,7 @@ from pathlib import Path
 import libtorrent as lt
 
 from . import config as C
+from . import net
 
 CGNAT = ipaddress.ip_network("100.64.0.0/10")
 
@@ -127,6 +128,7 @@ class Engine:
             "torrent_connect_boost": 30,
             "out_enc_policy": enc,
             "in_enc_policy": enc,
+            **net.lt_settings(s),
         }
 
     def apply_settings(self, new):
@@ -156,7 +158,7 @@ class Engine:
             urls.append("https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master/" + url.rsplit("/", 1)[-1])
         for u in urls:
             try:
-                with urllib.request.urlopen(u, timeout=10) as r:
+                with net.urlopen(self.settings, u, timeout=10) as r:
                     lst = [l.strip() for l in r.read().decode().splitlines() if l.strip()]
                 if lst:
                     self.trackers = lst
@@ -241,7 +243,7 @@ class Engine:
                     return
                 try:
                     req = urllib.request.Request(tpl.format(HASH=ih.upper(), hash=ih), headers={"User-Agent": "Mozilla/5.0"})
-                    with urllib.request.urlopen(req, timeout=20) as r:
+                    with net.urlopen(self.settings, req, timeout=20) as r:
                         data = r.read(20 * 1024 * 1024)
                     d = lt.bdecode(data)
                     if not d or b"info" not in d:

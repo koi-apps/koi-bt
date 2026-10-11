@@ -71,7 +71,7 @@
 <!-- 添加 -->
 <div class="mask" id="m-add"><div class="dlg">
   <h3>添加下载</h3>
-  <label class="l">链接（一行一个）：磁力链、网页直链、迅雷 thunder:// 都行</label>
+  <label class="l">链接（一行一个）：磁力链、网页直链、迅雷 thunder://、YouTube / B 站等视频网页都行</label>
   <textarea id="a-links" rows="5" oninput="updateAddSummary()" placeholder="magnet:?xt=urn:btih:...&#10;https://example.com/file.zip&#10;thunder://..."></textarea>
   <div class="drop" id="a-drop">＋ 选择 .torrent 种子文件（可以多选），或者直接拖进来</div>
   <input type="file" id="a-file" accept=".torrent" multiple hidden>
@@ -181,7 +181,18 @@
     <label class="l">加密</label>
     <select id="st-encryption"><option value="prefer">优先加密（推荐，防运营商识别限速）</option><option value="require">强制加密（连的人会变少）</option><option value="disable">不加密</option></select>
     <label class="l">绑定网卡 IP（挂 VPN 时填 VPN 的 IP，VPN 断了就不会用真实 IP 下载；留空 = 不绑定）</label><input id="st-bind_interface" placeholder="例如 10.8.0.2">
+    <label class="l">代理</label>
+    <div class="three">
+      <div><select id="st-proxy_type"><option value="none">不用代理</option><option value="socks5">SOCKS5</option><option value="http">HTTP</option></select></div>
+      <div><input id="st-proxy_host" placeholder="地址，例如 127.0.0.1"></div>
+      <div><input id="st-proxy_port" type="number" min="0" max="65535" placeholder="端口，例如 1080"></div>
+    </div>
+    <div class="two"><input id="st-proxy_user" placeholder="用户名（没有就留空）" autocomplete="off"><input id="st-proxy_pass" type="password" placeholder="密码（没有就留空）" autocomplete="new-password"></div>
+    <label class="chk"><input type="checkbox" id="st-proxy_bt"> BT 下载走代理（tracker 和连接别人都走代理，别人看到的是代理的 IP）</label>
+    <label class="chk"><input type="checkbox" id="st-proxy_http"> 直链下载、视频网站下载也走代理</label>
+    <div style="margin-top:6px"><button onclick="testProxy()">🔌 测试代理</button> <span id="proxy-res" class="sub small"></span></div>
     <label class="chk"><input type="checkbox" id="st-auto_trackers"> 自动加入公开 tracker 列表（私有种子自动跳过）</label>
+    <label class="chk"><input type="checkbox" id="st-metadata_cache"> 磁力链从公开种子缓存秒取文件列表（会把种子的指纹发给 itorrents.org）</label>
     <label class="l">tracker 列表地址</label><input id="st-tracker_url">
     <div style="margin-top:8px"><button onclick="refreshTrk()">🔄 立即更新 tracker 列表</button> <span id="trkn" class="sub small"></span></div>
   </div>

@@ -80,7 +80,7 @@ function rowHtml(t){
   return `<div class="row ${sel.has(t.id)?'sel':''} ${t.need_select?'need':''}" data-id="${t.id}" ondblclick="openDet('${t.id}','info')">
     <input type="checkbox" ${sel.has(t.id)?'checked':''} onclick="tog('${t.id}',event)">
     <div style="min-width:0">
-      <div class="name" title="${esc(t.name)}">${t.type==='http'?'<span class="badge http">直链</span>':''}${t.category?`<span class="badge cat">${esc(t.category)}</span>`:''}${t.sequential?'<span class="badge" title="顺序下载中">顺序</span>':''}<span class="t">${esc(t.name)}</span></div>
+      <div class="name" title="${esc(t.name)}">${t.type==='http'?(t.video?'<span class="badge http">视频</span>':'<span class="badge http">直链</span>'):''}${t.category?`<span class="badge cat">${esc(t.category)}</span>`:''}${t.sequential?'<span class="badge" title="顺序下载中">顺序</span>':''}<span class="t">${esc(t.name)}</span></div>
       <div class="meta">${meta}</div>
       <div class="prog ${cls}"><i style="width:${pct}%"></i></div>${segs}
       <div class="pills"><div class="health h-${t.health.level}"><span class="dot"></span><span>${esc(t.health.text)}</span></div>${seedPill(t)}</div>
@@ -699,3 +699,12 @@ function decoratePaths(root=document){
   });
 }
 new MutationObserver(()=>decoratePaths()).observe(document.body,{childList:true,subtree:true}); decoratePaths();
+
+// 设置页：测试代理（用当前填的值，不用先保存）
+async function testProxy(){
+  const v=k=>{const el=$('st-'+k);return el.type==='checkbox'?el.checked:(el.type==='number'?+el.value:el.value)};
+  const body={}; ['proxy_type','proxy_host','proxy_port','proxy_user','proxy_pass'].forEach(k=>body[k]=v(k));
+  $('proxy-res').textContent=I18N.t('测试中…');
+  const r=await api('/api/proxy/test',body);
+  $('proxy-res').innerHTML=r.ok?`<span class="ok">✅ ${I18N.t('能用，出口 IP：')}${esc(r.msg)}</span>`:`<span class="bad">❌ ${esc(I18N.t(r.msg))}</span>`;
+}

@@ -11,7 +11,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m pip install libtorrent==2.1.1 aiohttp segno cryptography
+      - run: python -m pip install libtorrent==2.1.1 aiohttp segno cryptography aiohttp-socks yt-dlp imageio-ffmpeg
       - name: 编译检查
         run: python -m compileall -q koi main.py
       - name: 冒烟测试

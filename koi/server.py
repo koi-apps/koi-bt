@@ -7,6 +7,7 @@ import mimetypes
 import os
 import re
 import secrets
+import threading
 import time
 import urllib.parse
 from collections import deque
@@ -16,10 +17,13 @@ import libtorrent as lt
 from aiohttp import web
 
 from . import config as C
+from . import net
 from . import winsys
 from .engine import Engine
 from .httpdl import HttpManager, decode_special
 from .rss import RssManager
+from . import videodl
+from .videodl import VideoManager
 from .updater import Updater
 
 LINK_RE = re.compile(r"^(magnet:\?|thunder://|qqdl://|flashget://|https?://\S+\.torrent(\?\S*)?$)", re.I)
@@ -37,6 +41,9 @@ class Core:
         self.show_window = None        # 把窗口叫到前台，由 app.py 注入
         self.bt = Engine(self.settings, self.notify)
         self.http = HttpManager(self.settings, self.notify, self._torrent_from_http)
+        self.video = VideoManager(self.settings, self.notify)
+        # 视频网站识别要先加载 yt-dlp 的上千个网站规则，放后台提前做，免得第一次添加卡一下
+        threading.Thread(target=videodl.is_video_page, args=('https://example.com/',), daemon=True).start()
         self.rss = RssManager(self._rss_add)
         self.was_busy = False
         self.sid_tokens = set()
@@ -78,6 +85,8 @@ class Core:
             return "bt", self.bt.add_magnet(link, save_path, category, select_files, paused)
         if re.fullmatch(r"[0-9a-fA-F]{40}", link):
             return "bt", self.bt.add_magnet(f"magnet:?xt=urn:btih:{link}", save_path, category, select_files, paused)
+        if link.lower().startswith(("http://", "https://")) and not LINK_RE.match(link) and videodl.is_video_page(link):
+            return "video", self.video.add(link, save_path, category)
         if link.lower().startswith(("http://", "https://", "ftp://")):
             return self.http.add(link, save_path, headers, category=category)
         raise ValueError("认不出这个链接")
@@ -90,7 +99,7 @@ class Core:
             if t["progress"] >= 1 and f"bt:{t['id']}" not in self.done_log:
                 self.done_log[f"bt:{t['id']}"] = {"name": t["name"], "at": int(time.time())}
                 changed = True
-        for t in list(self.http.tasks.values()):
+        for t in list(self.http.tasks.values()) + list(self.video.tasks.values()):
             if t.state == "done" and f"url:{t.url}" not in self.done_log:
                 self.done_log[f"url:{t.url}"] = {"name": t.filename or t.url, "at": int(time.time())}
                 changed = True
@@ -131,7 +140,7 @@ class Core:
             if h:
                 return {"kind": "exists", "id": i, "name": h.status().name or i}
         if url:
-            for t in self.http.tasks.values():
+            for t in list(self.http.tasks.values()) + list(self.video.tasks.values()):
                 if t.url == url:
                     return {"kind": "exists", "id": t.id, "name": t.filename or url}
         if force:
@@ -155,7 +164,7 @@ class Core:
 
     # ---------- 合并后的列表 ----------
     def snapshot(self):
-        lst = self.bt.snapshot() + self.http.snapshot()
+        lst = self.bt.snapshot() + self.http.snapshot() + self.video.snapshot()
         lst.sort(key=lambda t: -t["added"])
         return lst
 
@@ -280,6 +289,7 @@ class Core:
                 if n % 2 == 0:
                     self.bt.tick()
                     self.http.tick()
+                    self.video.tick()
                 if n % 2 == 1 and self.settings["clipboard_watch"] and not getattr(self, "_clip_busy", False):
                     # 读剪贴板可能被别的程序卡住（延迟渲染），放到线程池里，不阻塞事件循环
                     self._clip_busy = True
@@ -342,7 +352,7 @@ class Core:
                     pass
 
     def _busy_check(self):
-        busy = self.bt.any_downloading() or self.http.any_running()
+        busy = self.bt.any_downloading() or self.http.any_running() or self.video.any_running()
         if self.was_busy and not busy:
             self.notify("all_done", "全部下载完成", "")
             act = self.settings["after_all_done"]
@@ -558,6 +568,13 @@ def build_app(core: Core):
         b = await req.json()
         act = b.get("action")
         for tid in b.get("ids", []):
+            if tid.startswith("v") and tid in core.video.tasks:
+                t = core.video.tasks[tid]
+                if act == "open":
+                    winsys.open_folder(t.save_path, os.path.join(t.save_path, t.filename) if t.filename else None)
+                else:
+                    core.video.action(tid, act, **b)
+                continue
             if tid.startswith("h") and tid in core.http.tasks:
                 if act == "open":
                     t = core.http.tasks[tid]
@@ -587,6 +604,9 @@ def build_app(core: Core):
     @routes.get("/api/details/{ih}")
     async def details(req):
         ih = req.match_info["ih"]
+        if ih in core.video.tasks:
+            t = core.video.tasks[ih]
+            return web.json_response({"http": True, "history": list(t.history), "info": {"url": t.url, "name": t.filename or t.title, "save_path": t.save_path, "size": t.size, "ranges": True}})
         if ih in core.http.tasks:
             t = core.http.tasks[ih]
             return web.json_response({"http": True, "history": list(t.history), "info": {"url": t.url, "name": t.filename, "save_path": t.save_path, "size": t.size, "ranges": t.ranges}})
@@ -658,8 +678,17 @@ def build_app(core: Core):
     @routes.post("/api/settings")
     async def settings(req):
         b = await req.json()
+        old_proxy = {k: S.get(k) for k in S if k.startswith("proxy_")}
         core.bt.apply_settings(b)
+        if {k: S.get(k) for k in S if k.startswith("proxy_")} != old_proxy and core.http.session:
+            await core.http.reset_session()
         return web.json_response(S)
+
+    @routes.post("/api/proxy/test")
+    async def proxy_test(req):
+        b = await req.json()
+        ok, msg = await asyncio.get_running_loop().run_in_executor(None, net.test, dict(S, **b))
+        return web.json_response({"ok": ok, "msg": msg})
 
     @routes.post("/api/categories")
     async def categories(req):

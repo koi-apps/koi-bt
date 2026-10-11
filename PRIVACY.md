@@ -10,6 +10,8 @@ It only connects to the network for these purposes:
 2. **公开 tracker 列表 / Public tracker list**：从 [ngosang/trackerslist](https://github.com/ngosang/trackerslist) 获取，可在设置里关闭或更换地址。Fetched from ngosang/trackerslist; can be disabled in Settings.
 3. **检查更新 / Update check**：从本仓库的 GitHub Releases 读取 `latest.json`，每次启动和之后每小时一次，可在设置里关闭。Reads latest.json from this repository's GitHub Releases on startup and then hourly; can be disabled.
 4. **RSS 订阅 / RSS feeds**：只访问你自己添加的订阅地址。Only the feeds you add.
+5. **磁力链的文件列表 / Magnet file lists**：添加磁力链时，会把它的 info hash（种子的指纹，不含你的任何信息）发给公开种子缓存 [itorrents.org](https://itorrents.org) 直接取文件列表，可在设置里关闭。When you add a magnet link, its info hash is sent to the public torrent cache itorrents.org to fetch the file list faster; can be disabled in Settings.
+6. **视频网站下载 / Video sites**：用开源的 yt-dlp 直接访问你粘贴的视频网页（YouTube、B 站等）。Uses the open-source yt-dlp to access the video pages you add.
 
 **BitTorrent 协议本身的特性**：下载和做种时，你的 IP 地址和端口会被同一个种子里的其他用户、tracker 服务器和 DHT 网络看到——所有 BT 软件都是这样。如需隐藏 IP，可以在设置里把 KOI BT 绑定到 VPN 网卡。
 **How BitTorrent works**: while downloading or seeding, your IP address and port are visible to other peers in the same torrent, to trackers and to the DHT network — this is true for every BitTorrent client. You can bind KOI BT to a VPN interface in Settings to hide it.

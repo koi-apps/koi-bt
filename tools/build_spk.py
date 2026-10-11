@@ -35,7 +35,7 @@ ARCHES = {
 }
 PKG = "koi-bt"
 SHARE = "KOI-BT"
-DEPS = ["libtorrent==2.1.1", "aiohttp>=3.9", "segno>=1.6", "cryptography>=42"]
+DEPS = ["libtorrent==2.1.1", "aiohttp>=3.9", "segno>=1.6", "cryptography>=42", "aiohttp-socks>=0.10", "yt-dlp>=2026.8", "imageio-ffmpeg>=0.6"]
 
 
 def version():

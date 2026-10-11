@@ -7,7 +7,7 @@ from pathlib import Path
 APP_NAME = "KOI BT"
 GITHUB_REPO = "koi-apps/koi-bt"     # 官方发布仓库：更新从这里的 Releases 拿
 OFFICIAL_UPDATE_URL = f"https://github.com/{GITHUB_REPO}/releases/latest/download"
-VERSION = "1.5.6"
+VERSION = "1.5.7"
 UI_PORT = 18790
 
 BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
@@ -81,6 +81,14 @@ DEFAULT_SETTINGS = {
     "tracker_url": "https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best.txt",
     "encryption": "prefer",        # prefer / require / disable
     "bind_interface": "",          # 绑定网卡（挂 VPN 时防泄露），空 = 全部
+    # 代理
+    "proxy_type": "none",          # none / socks5 / http
+    "proxy_host": "",
+    "proxy_port": 0,
+    "proxy_user": "",
+    "proxy_pass": "",
+    "proxy_bt": True,              # BT 连接走代理
+    "proxy_http": True,            # 直链下载、视频网站下载、其他网页请求走代理
     # 速度
     "download_limit_kb": 0,
     "upload_limit_kb": 0,

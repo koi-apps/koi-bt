@@ -13,6 +13,7 @@ from pathlib import Path
 import aiohttp
 
 from . import config as C
+from . import net
 
 MIN_SPLIT = 1024 * 1024          # 剩余不到 1MB 的段不再劈
 CHUNK = 256 * 1024
@@ -146,8 +147,22 @@ class HttpManager:
 
     async def start(self):
         self.loop = asyncio.get_running_loop()
+        self.session = self._new_session()
+
+    def _new_session(self):
         timeout = aiohttp.ClientTimeout(total=None, sock_connect=20, sock_read=60)
-        self.session = aiohttp.ClientSession(timeout=timeout, connector=aiohttp.TCPConnector(limit=0, ssl=False))
+        return aiohttp.ClientSession(timeout=timeout, connector=net.aiohttp_connector(self.settings, limit=0, ssl=False),
+                                     proxy=net.aiohttp_proxy(self.settings))
+
+    async def reset_session(self):
+        """代理设置改了：换一个新的连接会话（正在下的任务会自动重连续传）。"""
+        old, self.session = self.session, self._new_session()
+        for t in self.tasks.values():
+            if t.state == "running" and t.task:
+                t.task.cancel()
+                t.state = "queued"
+        if old:
+            await old.close()
 
     async def stop(self):
         for t in self.tasks.values():
