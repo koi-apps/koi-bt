@@ -134,7 +134,7 @@ function renderHead(){ document.querySelectorAll('#listhead .lh').forEach(b=>{ c
 document.querySelectorAll('#listhead .lh').forEach(b=>b.onclick=()=>setSort(b.dataset.k));
 function toggleAll(on){ const vis=data.filter(pass); if(on) vis.forEach(t=>sel.add(t.id)); else vis.forEach(t=>sel.delete(t.id)); render() }
 function tog(id,e){e.stopPropagation();sel.has(id)?sel.delete(id):sel.add(id);render()}
-document.addEventListener('click',e=>{const r=e.target.closest('.row');if(r&&!e.target.closest('button,input')){const id=r.dataset.id;if(e.shiftKey&&sel.size){const ids=data.filter(pass).map(t=>t.id);const a=ids.indexOf([...sel].pop()),b=ids.indexOf(id);ids.slice(Math.min(a,b),Math.max(a,b)+1).forEach(x=>sel.add(x))}else if(!e.ctrlKey&&!e.metaKey){const only=sel.size===1&&sel.has(id);sel.clear();if(!only)sel.add(id)}else{sel.has(id)?sel.delete(id):sel.add(id)}render()}});
+document.addEventListener('click',e=>{const r=e.target.closest('.row');if(r&&!e.target.closest('button,input')){const id=r.dataset.id;if(e.shiftKey&&sel.size){const ids=data.filter(pass).map(t=>t.id);const a=ids.indexOf([...sel].pop()),b=ids.indexOf(id);ids.slice(Math.min(a,b),Math.max(a,b)+1).forEach(x=>sel.add(x))}else{sel.has(id)?sel.delete(id):sel.add(id)}render()}});   // 点一行 = 勾 / 取消这一行，和左边的勾选框一样，不会把别的取消掉
 async function act(a){await api('/api/action',{action:a,ids:[...sel]});poll1()}
 async function a1(a,id){
   if(a==='open'&&!openLocal()) return showFolder(id);
