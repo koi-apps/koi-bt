@@ -637,8 +637,9 @@ async function rssOp(b){if(b.op==='refresh'||b.op==='add_feed')toast('正在抓�
 function renderRss(){
   const d=rssData, body=$('rss-body'); if(!d)return;
   if(rssTab==='feeds'){
-    body.innerHTML=`<div class="two"><input id="rf-url" placeholder="RSS 地址，例如 https://mikanani.me/RSS/Bangumi?bangumiId=..."><div style="display:flex;gap:6px"><input id="rf-int" type="number" value="15" title="多少分钟刷新一次" style="width:90px"><span class="sub small" style="align-self:center">分钟</span><button class="primary" onclick="rssOp({op:'add_feed',url:$('rf-url').value,interval:+$('rf-int').value})">＋ 订阅</button></div></div>
-     <div class="hint">第一次订阅时，已有的旧条目不会自动下载，只下以后新出的。想要旧的，在下面列表里手动点「下载」。</div>`+
+    body.innerHTML=`<div class="two"><input id="rf-url" placeholder="网站地址或 RSS 地址，例如 example.com 或 https://.../rss.xml"><div style="display:flex;gap:6px"><input id="rf-int" type="number" value="15" title="多少分钟刷新一次" style="width:90px"><span class="sub small" style="align-self:center">分钟</span><button onclick="rssFind()" title="只给网站首页也行，我替你把订阅地址找出来">🔍 自动找</button><button class="primary" onclick="rssOp({op:'add_feed',url:$('rf-url').value,interval:+$('rf-int').value})">＋ 直接订阅</button></div></div>
+     <div id="rf-found"></div>
+     <div class="hint">不知道订阅地址？把网站首页丢进来点「自动找」。第一次订阅时已有的旧条目不会自动下载，只下以后新出的；想要旧的，在下面列表里手动点「下载」。</div>`+
      d.feeds.map(f=>`<div style="margin-top:14px"><div style="display:flex;gap:8px;align-items:center"><b>${esc(f.name)}</b><span class="sub small mono grow">${esc(f.url)}</span>${f.error?`<span class="bad small">${esc(f.error)}</span>`:''}<button class="danger" onclick="if(confirm('取消订阅？'))rssOp({op:'remove_feed',id:'${f.id}'})">取消订阅</button></div>
        <div class="ftree" style="max-height:260px"><table class="t">${(d.items[f.id]||[]).map(it=>`<tr><td class="p">${esc(it.title)}</td><td class="small sub" style="white-space:nowrap">${it.size?fmtB(it.size):''}</td><td style="width:60px">${it.link?`<button style="padding:2px 8px" onclick='rssOp({op:"download",link:${JSON.stringify(it.link).replace(/'/g,"&#39;")}});toast("已添加")'>下载</button>`:''}</td></tr>`).join('')||'<tr><td class="sub">还没有条目</td></tr>'}</table></div></div>`).join('');
   } else if(rssTab==='rules'){
@@ -660,6 +661,22 @@ function renderRss(){
   }
 }
 function ruleFromForm(){return Object.assign({},editRule||{}, {name:$('rr-name').value,include:$('rr-inc').value,exclude:$('rr-exc').value,feeds:[...document.querySelectorAll('.rr-feed:checked')].map(c=>c.value),save_path:$('rr-path').value,category:$('rr-cat').value,enabled:editRule?editRule.enabled:true})}
+async function rssFind(){
+  const u=$('rf-url').value.trim(); if(!u){toast('先填个网址');return}
+  const box=$('rf-found'); box.innerHTML='<div class="hint">正在找，最多等 20 秒…</div>';
+  let r; try{r=await api('/api/rss',{op:'discover',url:u})}catch(e){box.innerHTML='<div class="hint bad">出错了：'+esc(''+e)+'</div>';return}
+  if(!r.feeds||!r.feeds.length){box.innerHTML='<div class="hint">没找到可用的订阅源。'+esc(r.error||'')+'</div>';return}
+  box.innerHTML='<div class="hint">找到 '+r.feeds.length+' 个，看清楚再订阅：</div>'+r.feeds.map(f=>{
+    const tag=f.downloadable>0
+      ?'<span class="ok small">🧲 '+f.downloadable+'/'+f.count+' 条带磁力链或种子 —— 能用来自动下载</span>'
+      :'<span class="warn small">⚠️ 不带磁力链，只有标题和网页链接 —— 规则命中也下不了</span>';
+    return '<div class="list-item" style="align-items:flex-start"><div class="grow">'
+      +'<b>'+esc(f.name)+'</b> <span class="sub small">'+esc(f.how)+' · '+f.count+' 条</span>'
+      +'<div class="sub small mono" style="word-break:break-all">'+esc(f.url)+'</div><div>'+tag+'</div>'
+      +'<div class="sub small" style="margin-top:4px">'+f.sample.map(esc).join('<br>')+'</div></div>'
+      +'<button class="primary" onclick=\'rssOp({op:"add_feed",url:'+JSON.stringify(f.url).replace(/'/g,"&#39;")+',interval:+$("rf-int").value})\'>＋ 订阅这个</button></div>';
+  }).join('');
+}
 async function testRule(){const r=await api('/api/rss',{op:'test_rule',rule:ruleFromForm()});$('rr-test').innerHTML=`<div class="hint">匹配到 ${r.length} 条：<br>${r.map(esc).join('<br>')||'（没有）'}</div>`}
 async function saveRule(){const r=ruleFromForm();if(!r.include&&!confirm('「包含」是空的，会下载订阅里所有新条目，确定？'))return;await rssOp({op:'set_rule',rule:r});editRule=null;renderRss();toast('规则已保存')}
 

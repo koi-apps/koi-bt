@@ -21,7 +21,7 @@ from . import net
 from . import winsys
 from .engine import Engine
 from .httpdl import HttpManager, decode_special
-from .rss import RssManager
+from .rss import RssManager, discover
 from . import videodl
 from .videodl import VideoManager
 from .updater import Updater
@@ -770,6 +770,8 @@ def build_app(core: Core):
             core.rss.remove_rule(b["id"])
         elif op == "download":
             core.add_link(b["link"], None, "", select_files=None)
+        elif op == "discover":
+            return web.json_response(await discover(core.http.session, b.get("url", "")))
         elif op == "test_rule":
             items = [i for v in core.rss.items.values() for i in v]
             return web.json_response([i["title"] for i in items if core.rss.match(b["rule"], i["title"])][:50])
