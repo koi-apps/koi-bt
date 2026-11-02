@@ -9,6 +9,7 @@
 详情页那跳连规则都不用：磁力链和种子链接格式是死的，整页正则扫一遍就行。
 """
 import asyncio
+import base64
 import html.parser
 import re
 import urllib.parse
@@ -22,7 +23,10 @@ DETAIL_GAP = 0.5           # 两次详情请求之间歇多久
 MIN_TITLE = 2              # 标题短于这个的当导航扔掉；中文两个字就能成词，别设大了
 
 MAGNET_RE = re.compile(r"magnet:\?xt=urn:btih:[0-9a-zA-Z]{32,40}[^\s\"'<>\\]*", re.I)
-TORRENT_RE = re.compile(r"""["'](https?://[^"'\s]+?\.torrent(?:\?[^"'\s]*)?)["']""", re.I)
+# 种子链接经常是相对路径（/attachment/9.torrent、down/9.torrent），所以从
+# href/src 属性里取，拿到后再用 urljoin 补成绝对地址
+TORRENT_RE = re.compile(r"""\b(?:href|src)\s*=\s*["']([^"'\s<>]+?\.torrent(?:\?[^"'\s<>]*)?)["']""", re.I)
+THUNDER_RE = re.compile(r"thunder://[A-Za-z0-9+/=]{8,}", re.I)
 # 标题只剩数字和日期符号的，是页码或时间列，不是正文标题
 _NUMISH = re.compile(r"^[\d\s\-:/.,年月日时分秒]+$")
 _SKIP_EXT = (".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".svg", ".zip", ".rar")
@@ -181,13 +185,28 @@ async def get(session, url):
         return None, 0
 
 
+def _unthunder(u):
+    """迅雷链接就是把真地址首尾加 AA/ZZ 再 base64，解出来多半是普通 http 地址。"""
+    try:
+        raw = base64.b64decode(u[len("thunder://"):] + "===").decode("utf-8", "replace")
+    except Exception:
+        return ""
+    if raw[:2].upper() == "AA" and raw[-2:].upper() == "ZZ":
+        raw = raw[2:-2]
+    return raw if raw.startswith(("http://", "https://", "magnet:")) else ""
+
+
 def downloads_in(body, base):
-    """整页扫磁力链和 .torrent，磁力链优先。"""
+    """整页扫能下的东西，磁力链优先，然后是种子文件，最后才是迅雷链接。"""
     text = body.decode("utf-8", "replace")
     for m in MAGNET_RE.finditer(text):
         return m.group(0)
     for m in TORRENT_RE.finditer(text):
         return urllib.parse.urljoin(base, m.group(1))
+    for m in THUNDER_RE.finditer(text):
+        got = _unthunder(m.group(0))
+        if got:
+            return got
     return ""
 
 
