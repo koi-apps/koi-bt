@@ -58,13 +58,22 @@ def parse_feed(xml_bytes):
 class RssManager:
     def __init__(self, add_fn):
         self.add_fn = add_fn   # add_fn(link, save_path, category) -> 返回描述
-        self.data = {"feeds": [], "rules": [], "seen": {}}
+        self.data = {"feeds": [], "rules": [], "seen": {}, "log": []}
         try:
             self.data.update(json.loads(C.RSS_FILE.read_text("utf-8")))
         except (OSError, ValueError):
             pass
         self.items = {}        # feed_id -> 最近的条目
-        self.log = []
+
+    # 下载记录以前是纯内存的，KOI BT 一重启就归零，用户看到的永远是 0 条。
+    # 挂进 data 里跟着 save() 走，重启还在。
+    @property
+    def log(self):
+        return self.data.setdefault("log", [])
+
+    @log.setter
+    def log(self, v):
+        self.data["log"] = v
 
     def save(self):
         C.RSS_FILE.write_text(json.dumps(self.data, ensure_ascii=False, indent=1), "utf-8")

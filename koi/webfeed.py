@@ -27,6 +27,13 @@ MAGNET_RE = re.compile(r"magnet:\?xt=urn:btih:[0-9a-zA-Z]{32,40}[^\s\"'<>\\]*", 
 # href/src 属性里取，拿到后再用 urljoin 补成绝对地址
 TORRENT_RE = re.compile(r"""\b(?:href|src)\s*=\s*["']([^"'\s<>]+?\.torrent(?:\?[^"'\s<>]*)?)["']""", re.I)
 THUNDER_RE = re.compile(r"thunder://[A-Za-z0-9+/=]{8,}", re.I)
+# 有的论坛只贴一串光秃秃的 info hash，不给完整磁力链。hash 就是种子的身份证，
+# 自己补上 magnet: 前缀照样能下。
+BTIH_HEX = re.compile(r"(?<![0-9a-zA-Z])([0-9a-fA-F]{40})(?![0-9a-zA-Z])")
+# 但 40 位十六进制也可能是代码版本号、文件校验和，所以只在页面确实在讲
+# 下载这件事的时候才采信，不然会给用户塞一个下不动的任务。
+_DL_HINT = re.compile(r"磁力|磁鏈|磁链|種子|种子|torrent|btih|info\s*hash|哈希|雜湊|download|下載|下载", re.I)
+_SCRIPTY = re.compile(r"(?is)<(script|style)\b.*?</\1>")
 # 标题只剩数字和日期符号的，是页码或时间列，不是正文标题
 _NUMISH = re.compile(r"^[\d\s\-:/.,年月日时分秒]+$")
 _SKIP_EXT = (".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".svg", ".zip", ".rar")
@@ -196,8 +203,28 @@ def _unthunder(u):
     return raw if raw.startswith(("http://", "https://", "magnet:")) else ""
 
 
+def bare_hashes(text):
+    """页面里光秃秃的 info hash，补成磁力链。
+
+    只认「这一页确实在讲下载」的情况：没有种子/磁力/下载这类字眼就不猜，
+    宁可漏掉也别把版本号当种子塞给用户。script/style 里的随机串先剔掉。
+    """
+    body = _SCRIPTY.sub(" ", text)
+    if not _DL_HINT.search(body):
+        return []
+    out, got = [], set()
+    for m in BTIH_HEX.finditer(body):
+        h = m.group(1).lower()
+        if h in got or len(set(h)) <= 2:      # 重复的，以及全 0 全 f 这种占位
+            continue
+        got.add(h)
+        out.append("magnet:?xt=urn:btih:" + h)
+    return out
+
+
 def downloads_in(body, base):
-    """整页扫能下的东西，磁力链优先，然后是种子文件，最后才是迅雷链接。"""
+    """整页扫能下的东西：磁力链优先，然后种子文件，再是迅雷链接，
+    最后才退到「只给了一串 hash」这种情况。"""
     text = body.decode("utf-8", "replace")
     for m in MAGNET_RE.finditer(text):
         return m.group(0)
@@ -207,6 +234,8 @@ def downloads_in(body, base):
         got = _unthunder(m.group(0))
         if got:
             return got
+    for mag in bare_hashes(text):
+        return mag
     return ""
 
 
