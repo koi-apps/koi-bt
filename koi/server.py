@@ -22,6 +22,7 @@ from . import winsys
 from .engine import Engine
 from .httpdl import HttpManager, decode_special
 from .rss import RssManager, discover
+from . import webfeed
 from . import videodl
 from .videodl import VideoManager
 from .updater import Updater
@@ -758,8 +759,11 @@ def build_app(core: Core):
         b = await req.json()
         op = b.get("op")
         if op == "add_feed":
-            core.rss.add_feed(b["url"], b.get("name", ""), b.get("interval", 15))
+            core.rss.add_feed(b["url"], b.get("name", ""), b.get("interval", 15),
+                              b.get("kind", "rss"), b.get("pattern", ""))
             await core.rss.refresh(core.http.session, force=True)
+        elif op == "preview_web":
+            return web.json_response(await webfeed.preview(core.http.session, b.get("url", ""), b.get("pattern", "")))
         elif op == "remove_feed":
             core.rss.remove_feed(b["id"])
         elif op == "refresh":

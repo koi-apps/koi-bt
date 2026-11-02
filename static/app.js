@@ -639,9 +639,13 @@ function renderRss(){
   if(rssTab==='feeds'){
     body.innerHTML=`<div class="two"><input id="rf-url" placeholder="网站地址或 RSS 地址，例如 example.com 或 https://.../rss.xml"><div style="display:flex;gap:6px"><input id="rf-int" type="number" value="15" title="多少分钟刷新一次" style="width:90px"><span class="sub small" style="align-self:center">分钟</span><button onclick="rssFind()" title="只给网站首页也行，我替你把订阅地址找出来">🔍 自动找</button><button class="primary" onclick="rssOp({op:'add_feed',url:$('rf-url').value,interval:+$('rf-int').value})">＋ 直接订阅</button></div></div>
      <div id="rf-found"></div>
-     <div class="hint">不知道订阅地址？把网站首页丢进来点「自动找」。第一次订阅时已有的旧条目不会自动下载，只下以后新出的；想要旧的，在下面列表里手动点「下载」。</div>`+
-     d.feeds.map(f=>`<div style="margin-top:14px"><div style="display:flex;gap:8px;align-items:center"><b>${esc(f.name)}</b><span class="sub small mono grow">${esc(f.url)}</span>${f.error?`<span class="bad small">${esc(f.error)}</span>`:''}<button class="danger" onclick="if(confirm('取消订阅？'))rssOp({op:'remove_feed',id:'${f.id}'})">取消订阅</button></div>
-       <div class="ftree" style="max-height:260px"><table class="t">${(d.items[f.id]||[]).map(it=>`<tr><td class="p">${esc(it.title)}</td><td class="small sub" style="white-space:nowrap">${it.size?fmtB(it.size):''}</td><td style="width:60px">${it.link?`<button style="padding:2px 8px" onclick='rssOp({op:"download",link:${JSON.stringify(it.link).replace(/'/g,"&#39;")}});toast("已添加")'>下载</button>`:''}</td></tr>`).join('')||'<tr><td class="sub">还没有条目</td></tr>'}</table></div></div>`).join('');
+     <div class="hint">不知道订阅地址？把网站首页丢进来点「自动找」。第一次订阅时已有的旧条目不会自动下载，只下以后新出的；想要旧的，在下面列表里手动点「下载」。</div>
+     <details style="margin-top:10px"><summary class="sub small" style="cursor:pointer">这个网站压根没有 RSS？用「网页订阅」</summary>
+       <div class="hint" style="margin-top:8px">把列表页地址填进来，我分析出哪一组链接是帖子，再进帖子页自动找磁力链。整个过程不需要站方提供任何东西。</div>
+       <div class="two" style="margin-top:6px"><input id="wf-url" placeholder="列表页地址，例如 https://某站/forum.php?fid=1"><button onclick="webAnalyze()">① 分析这个页面</button></div>
+       <div id="wf-out"></div></details>`+
+     d.feeds.map(f=>`<div style="margin-top:14px"><div style="display:flex;gap:8px;align-items:center"><b>${esc(f.name)}</b>${f.type==='web'?'<span class="badge">网页订阅</span>':''}<span class="sub small mono grow">${esc(f.url)}</span>${f.error?`<span class="bad small">${esc(f.error)}</span>`:''}<button class="danger" onclick="if(confirm('取消订阅？'))rssOp({op:'remove_feed',id:'${f.id}'})">取消订阅</button></div>
+       <div class="ftree" style="max-height:260px"><table class="t">${(d.items[f.id]||[]).map(it=>`<tr><td class="p">${esc(it.title)}</td><td class="small sub" style="white-space:nowrap">${it.size?fmtB(it.size):''}</td><td style="width:72px">${it.link?`<button style="padding:2px 8px" onclick='rssOp({op:"download",link:${JSON.stringify(it.link).replace(/'/g,"&#39;")}});toast("已添加")'>下载</button>`:(it.page?'<span class="sub small">排队中</span>':'')}</td></tr>`).join('')||'<tr><td class="sub">还没有条目</td></tr>'}</table></div></div>`).join('');
   } else if(rssTab==='rules'){
     const r=editRule||{name:'',include:'',exclude:'',feeds:[],save_path:'',category:'',enabled:true};
     body.innerHTML=`<div class="hint">规则：新条目标题<b>包含</b>里的所有关键词（空格分隔）、且<b>不包含</b>排除词，就自动下载。也可以写正则，用 /.../ 包起来。<br>例子：包含「葬送的芙莉莲 1080p 简」，排除「合集 繁」。</div>
@@ -661,6 +665,37 @@ function renderRss(){
   }
 }
 function ruleFromForm(){return Object.assign({},editRule||{}, {name:$('rr-name').value,include:$('rr-inc').value,exclude:$('rr-exc').value,feeds:[...document.querySelectorAll('.rr-feed:checked')].map(c=>c.value),save_path:$('rr-path').value,category:$('rr-cat').value,enabled:editRule?editRule.enabled:true})}
+let wfUrl='';
+async function webAnalyze(){
+  wfUrl=$('wf-url').value.trim(); if(!wfUrl){toast('先填列表页地址');return}
+  const box=$('wf-out'); box.innerHTML='<div class="hint">正在分析…</div>';
+  let r; try{r=await api('/api/rss',{op:'preview_web',url:wfUrl})}catch(e){box.innerHTML='<div class="hint bad">出错了：'+esc(''+e)+'</div>';return}
+  if(!r.ok){box.innerHTML='<div class="hint bad">'+esc(r.error||'分析失败')+'</div>';return}
+  box.innerHTML='<div class="hint">② 这几组链接长得像列表，挑出帖子那一组：</div>'+r.groups.map(g=>
+    '<div class="list-item" style="align-items:flex-start"><div class="grow">'
+    +'<b>'+g.count+' 条</b> <span class="sub small mono">'+esc(g.pattern)+'</span>'
+    +'<div class="sub small" style="margin-top:4px">'+g.sample.map(esc).join('<br>')+'</div></div>'
+    +'<button onclick="webTry('+JSON.stringify(g.pattern).replace(/"/g,'&quot;')+')">就是这组</button></div>').join('');
+}
+async function webTry(pat){
+  const box=$('wf-out'); box.innerHTML='<div class="hint">正在拿前 3 条试抓，要进帖子页，慢一点…</div>';
+  let r; try{r=await api('/api/rss',{op:'preview_web',url:wfUrl,pattern:pat})}catch(e){box.innerHTML='<div class="hint bad">出错了：'+esc(''+e)+'</div>';return}
+  if(!r.ok){box.innerHTML='<div class="hint bad">'+esc(r.error||'试抓失败')+'</div>';return}
+  const head=r.hit>0
+    ?'<div class="hint"><span class="ok">③ 试抓到 '+r.hit+'/'+r.tried.length+' 条磁力链，这组能用。</span>确认下面抓的是不是你要的东西，然后订阅。</div>'
+    :'<div class="hint"><span class="bad">③ 一条磁力链都没抓到。</span>可能选错组了（点返回换一组），也可能这站的下载链接要登录才显示。</div>';
+  box.innerHTML=head+r.tried.map(t=>
+    '<div class="list-item" style="align-items:flex-start"><div class="grow"><b>'+esc(t.title)+'</b>'
+    +'<div class="sub small mono" style="word-break:break-all">'+esc(t.page)+'</div>'
+    +(t.link?'<div class="ok small mono" style="word-break:break-all">'+esc(t.link.slice(0,90))+'</div>'
+            :'<div class="warn small">'+esc(t.why)+'</div>')+'</div></div>').join('')
+    +'<div class="btns" style="margin-top:8px"><button onclick="webAnalyze()">← 换一组</button>'
+    +'<button class="primary" onclick="webSub('+JSON.stringify(pat).replace(/"/g,'&quot;')+')">＋ 订阅这个列表</button></div>';
+}
+async function webSub(pat){
+  await rssOp({op:'add_feed',url:wfUrl,kind:'web',pattern:pat,interval:+$('rf-int').value});
+  toast('已订阅，以后这个列表出新帖会自动进来');
+}
 async function rssFind(){
   const u=$('rf-url').value.trim(); if(!u){toast('先填个网址');return}
   const box=$('rf-found'); box.innerHTML='<div class="hint">正在找，最多等 20 秒…</div>';

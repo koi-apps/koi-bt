@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 import aiohttp
 
 from . import config as C
+from . import webfeed
 
 
 def _text(el, *names):
@@ -69,9 +70,9 @@ class RssManager:
         C.RSS_FILE.write_text(json.dumps(self.data, ensure_ascii=False, indent=1), "utf-8")
 
     # ---------- 订阅 ----------
-    def add_feed(self, url, name="", interval_min=15):
+    def add_feed(self, url, name="", interval_min=15, kind="rss", pattern=""):
         f = {"id": uuid.uuid4().hex[:8], "url": url.strip(), "name": name or url.strip(), "interval": int(interval_min),
-             "last": 0, "error": ""}
+             "last": 0, "error": "", "type": kind, "pattern": pattern}
         self.data["feeds"].append(f)
         self.save()
         return f
@@ -119,6 +120,9 @@ class RssManager:
             if not force and now - f["last"] < f["interval"] * 60:
                 continue
             f["last"] = now
+            if f.get("type") == "web":
+                await self._refresh_web(session, f)
+                continue
             try:
                 async with session.get(f["url"], headers={"User-Agent": "KoiDown RSS"}, timeout=aiohttp.ClientTimeout(total=30)) as r:
                     body = await r.read()
@@ -138,11 +142,31 @@ class RssManager:
                 f["error"] = str(e)[:200] or type(e).__name__
         self.save()
 
+    async def _refresh_web(self, session, f):
+        """网页订阅：列表页 → 帖子页 → 磁力链。去重交给 _apply_rules，这里只管抓。"""
+        known = set(self.data["seen"].get(f["id"], []))
+        items, err = await webfeed.fetch(session, f["url"], f.get("pattern", ""), known,
+                                         first_time=not known)
+        f["error"] = err
+        if items:
+            old = {i["guid"]: i for i in self.items.get(f["id"], [])}
+            for it in items:                      # 已经抓到过链接的，别被这轮的空值盖掉
+                if not it["link"] and old.get(it["guid"], {}).get("link"):
+                    it["link"] = old[it["guid"]]["link"]
+            self.items[f["id"]] = items[:200]
+            self._apply_rules(f, items)
+
     def _apply_rules(self, feed, items):
         seen = self.data["seen"].setdefault(feed["id"], [])
         first_time = not seen
         for it in items:
-            if it["guid"] in seen or not it["link"]:
+            if it["guid"] in seen:
+                continue
+            if not it["link"]:
+                # tried=True 表示确实进去看过、里面就是没有，记下别再重试；
+                # 没这个标记的是这轮没排上队（或本来就是 RSS 的空条目），留着下轮再说
+                if it.get("tried"):
+                    seen.append(it["guid"])
                 continue
             seen.append(it["guid"])
             if first_time:
