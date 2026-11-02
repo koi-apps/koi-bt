@@ -71,6 +71,10 @@ DEFAULT_SETTINGS = {
     "close_to_tray": True,
     "notify_done": True,
     "after_all_done": "none",      # none / sleep / shutdown
+    # 自动清理：长期下不动、线上又凑不齐完整文件的任务，连残片一起删掉
+    "purge_stuck": False,          # 默认关着 —— 这是会删文件的，得你自己开
+    "purge_stuck_days": 5,         # 加进来这么多天还没下完、而且进度这么久没动
+    "purge_delete_files": True,    # 连已经下的那部分残片一起删
     # 连接
     "listen_port": 51413,
     "max_connections": 500,

@@ -149,6 +149,10 @@
     <label class="chk"><input type="checkbox" id="st-notify_done"> 下载完成时弹系统通知</label>
     <label class="chk"><input type="checkbox" id="st-keep_awake"> 有任务在下载时不让电脑睡眠</label>
     <label class="chk"><input type="checkbox" id="st-close_to_tray"> 点关闭时缩到右下角托盘（不退出）</label>
+    <label class="chk" style="margin-top:10px"><input type="checkbox" id="st-purge_stuck"> 自动清理下不动的任务</label>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0 0 26px" class="small">加进来超过 <input id="st-purge_stuck_days" type="number" min="1" style="width:64px"> 天还没下完、进度同样这么久没动、而且线上拼不出完整文件的，自动删掉</div>
+    <label class="chk" style="margin-left:26px"><input type="checkbox" id="st-purge_delete_files"> 连已经下的那部分残片一起删</label>
+    <div class="hint" style="margin:6px 0 0 26px">四个条件要同时成立才会删：没下完、够老、进度卡了同样久、线上确实拼不出完整文件。只要还有人在做种或者现有的人能拼齐，就一直留着。自己做的种子不会被清。删掉的会记在数据目录的 purged.json 里。</div>
     <h4 style="margin:18px 0 4px">版本与更新</h4>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span>当前版本 <b id="cur-ver"></b></span><button onclick="checkUpdate(true)">🔄 检查更新</button><span id="upd-msg" class="sub small"></span></div>
     <label class="chk"><input type="checkbox" id="st-auto_update_check"> 自动检查新版本（每次打开软件时检查，之后每小时一次；有新版本会提示，不会自己装）</label>

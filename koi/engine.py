@@ -278,6 +278,9 @@ class Engine:
         ih = ih_of(h)
         self.first_seen.setdefault(ih, time.time())
         self.meta.setdefault(ih, {})["category"] = category or self.meta.get(ih, {}).get("category", "")
+        # first_seen 每次重启都重算（重启后本来就该给它时间重新找 peer），
+        # 所以「这任务到底挂了多久」不能问它，要用这个存进 meta 的
+        self.meta[ih].setdefault("first_added", time.time())
         h.save_resume_data(lt.save_resume_flags_t.save_info_dict)
         return ih
 
@@ -740,6 +743,7 @@ class Engine:
         self.scan_leechers()
         self._rebalance_queue()
         self._auto_select()
+        self._auto_purge()
         s = self.settings
         for h in self.ses.get_torrents():
             st = h.status()
@@ -771,8 +775,10 @@ class Engine:
             if not h or not h.status().has_metadata:
                 continue
             m = self.meta.setdefault(ih, {})
-            since = m.setdefault("select_since", now)
-            if now - since < mins * 60:
+            if "select_since" not in m:
+                m["select_since"] = now
+                self._save_meta(ih)          # 不存盘的话，重启一次计时就归零
+            if now - m["select_since"] < mins * 60:
                 continue
             fs = h.torrent_file().files()
             n = fs.num_files()
@@ -784,6 +790,59 @@ class Engine:
             m.pop("select_since", None)
             self.set_file_priorities(ih, pr)
             self.notify("info", "没选文件，已自动开始", h.status().name)
+
+    def _auto_purge(self):
+        """长期下不动、线上又凑不齐完整文件的任务，连残片一起清掉。默认关着。
+
+        不用 libtorrent 的 added_time —— 那个重启就归零，照它判断永远到不了 5 天。
+        """
+        s = self.settings
+        days = float(s.get("purge_stuck_days", 5) or 0)
+        on = bool(s.get("purge_stuck")) and days > 0
+        now, limit = time.time(), days * 86400
+        for h in list(self.ses.get_torrents()):
+            st = h.status()
+            ih = str(st.info_hash)
+            if st.is_seeding or st.is_finished or st.progress >= 1:
+                continue                       # 下完的一律不碰
+            m = self.meta.setdefault(ih, {})
+            # 进度动过就记一笔时间戳，卡没卡住全靠它。这段不管开关，一直记。
+            p = round(st.progress, 3)
+            if m.get("prog") != p:
+                m["prog"], m["prog_at"] = p, now
+                if now - m.get("prog_saved", 0) > 60:   # 别为了进度条每 5 秒写一次盘
+                    m["prog_saved"] = now
+                    self._save_meta(ih)
+                continue                       # 刚还在长，本轮不用看了
+            if not on or m.get("own") or m.get("keep"):
+                continue                       # 自己做的种、手动标了保留的，不动
+            if now - m.setdefault("first_added", now) < limit:
+                continue                       # 年头不够
+            if now - m.get("prog_at", now) < limit:
+                continue                       # 卡的时间还不够久
+            if st.num_seeds > 0 or st.distributed_copies >= 1:
+                continue                       # 线上有完整文件，还有救，再等等
+            if self._reachable(h, st) >= 0.9999:
+                continue                       # 现有这些人拼得出完整文件，也有救
+            name = st.name or ih[:8]
+            self._log_purge(ih, name, st.progress, st.total_wanted_done)
+            self.notify("warn", "自动清理：%g 天没有进展，线上也拼不出完整文件" % days, name)
+            self.remove(ih, delete_files=bool(s.get("purge_delete_files", True)))
+
+    def _log_purge(self, ih, name, progress, done_bytes):
+        """删了什么要留痕，不然用户只会发现任务莫名其妙少了。"""
+        import json
+        f = C.DATA_DIR / "purged.json"
+        try:
+            lst = json.loads(f.read_text("utf-8"))
+        except (OSError, ValueError):
+            lst = []
+        lst.insert(0, {"time": time.time(), "hash": ih, "name": name,
+                       "progress": round(progress, 4), "bytes": int(done_bytes)})
+        try:
+            f.write_text(json.dumps(lst[:200], ensure_ascii=False, indent=1), "utf-8")
+        except OSError:
+            pass
 
     def _rebalance_queue(self):
         """限制了同时下载数、又有任务在排队时：
