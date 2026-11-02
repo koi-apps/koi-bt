@@ -1,4 +1,5 @@
 """RSS 订阅 + 规则自动下载（追剧）。"""
+import asyncio
 import json
 import re
 import time
@@ -240,20 +241,21 @@ async def discover(session, url):
     if not re.match(r"^https?://", url, re.I):
         url = "https://" + url
 
-    found, seen = [], set()
+    found, seen, failed = [], set(), []
 
-    async def take(u, how, name_hint=""):
+    async def take(u, how, name_hint="", note_fail=False):
+        """note_fail=True 的是页面明确声明过的地址，抓不动要记下来告诉用户，别说成「没有 RSS」。"""
         u = urllib.parse.urldefrag(u)[0]
         if u in seen or len(found) >= 10:
             return
         seen.add(u)
-        body, _ = await _get(session, u)
-        if body is None:
-            return
-        got = _feed_info(body, u, name_hint)
+        body, st = await _get(session, u)
+        got = _feed_info(body, u, name_hint) if body is not None else None
         if got:
             got["how"] = how
             found.append(got)
+        elif note_fail:
+            failed.append((u, st if body is None else -1))
 
     body, status = await _get(session, url)
     if body is None:
@@ -270,17 +272,24 @@ async def discover(session, url):
 
     # 二、页面 <head> 里声明的（最可靠）
     for href, title in _links_in_html(body.decode("utf-8", "replace"), url):
-        await take(href, "页面里声明的", title)
+        await take(href, "页面里声明的", title, note_fail=True)
 
-    # 三、都没有就猜几个常见路径
+    # 三、都没有就猜几个常见路径（慢一点打，免得被当成刷接口）
     if not found:
         sp = urllib.parse.urlsplit(url)
-        for p in FEED_PATHS:
+        for i, p in enumerate(FEED_PATHS):
+            if i:
+                await asyncio.sleep(0.25)
             await take(f"{sp.scheme}://{sp.netloc}{p}", "猜到的常见路径")
             if found:
                 break
 
     if not found:
+        if failed:
+            u, st = failed[0]
+            why = f"对方返回 HTTP {st}" if st > 0 else ("内容不是 RSS" if st == -1 else "连不上")
+            return {"ok": True, "feeds": [],
+                    "error": f"这个页面声明了订阅源 {u}，但抓不下来（{why}）。多半是站点在限流或挡自动访问，隔一会儿再点一次试试"}
         return {"ok": True, "feeds": [],
                 "error": "这个网站没有公开的 RSS。常见原因：它压根没提供；或者要登录后在个人设置里生成专属地址"}
     return {"ok": True, "feeds": found}
