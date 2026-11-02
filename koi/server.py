@@ -25,6 +25,7 @@ from .rss import RssManager, discover
 from . import webfeed
 from . import videodl
 from .videodl import VideoManager
+from . import dedup
 from .updater import Updater
 
 LINK_RE = re.compile(r"^(magnet:\?|thunder://|qqdl://|flashget://|https?://\S+\.torrent(\?\S*)?$)", re.I)
@@ -45,7 +46,9 @@ class Core:
         self.video = VideoManager(self.settings, self.notify)
         # 视频网站识别要先加载 yt-dlp 的上千个网站规则，放后台提前做，免得第一次添加卡一下
         threading.Thread(target=videodl.is_video_page, args=('https://example.com/',), daemon=True).start()
-        self.rss = RssManager(self._rss_add)
+        # 查重索引：保存位置 / 下完后移动到 / 用户自己加的片库目录里，现在有什么
+        self.media = dedup.MediaIndex(self._dup_dirs)
+        self.rss = RssManager(self._rss_add, self.settings, self.notify)
         self.was_busy = False
         self.sid_tokens = set()
         self.quit_app = None            # 让程序正常退出（存好断点），由 main.py 注入
@@ -117,9 +120,14 @@ class Core:
             ids.add(str(ih.v2)[:40])
         return ids
 
-    def find_dup(self, link=None, data=None, save_path=None, force=False):
-        """返回 None，或者 {"kind": exists|seen|disk, ...}。
-        exists = 已经在列表里（不会再加）；seen = 以前下过；disk = 保存位置已经有这个文件。force 时只拦 exists。"""
+    def find_dup(self, link=None, data=None, save_path=None, force=False, history=True):
+        """返回 None，或者 {"kind": exists|seen|disk|library, ...}。
+
+        exists = 已经在列表里（不会再加）；seen = 以前下过；disk = 保存位置已经有这个文件；
+        library = 查重目录里有同编号的。force 时只拦 exists。
+        history=False 时不看下载历史 —— 用户自己删掉的东西应该能重新下，
+        历史记录会永远拦着他；这时只认「现在磁盘上真的有」。
+        """
         ids, url, name = set(), None, None
         try:
             if data is not None:
@@ -146,22 +154,96 @@ class Core:
                     return {"kind": "exists", "id": t.id, "name": t.filename or url}
         if force:
             return None
-        for key in [f"bt:{i}" for i in ids] + ([f"url:{url}"] if url else []):
-            if key in self.done_log:
-                return {"kind": "seen", "name": self.done_log[key]["name"], "at": self.done_log[key]["at"]}
+        if history:
+            for key in [f"bt:{i}" for i in ids] + ([f"url:{url}"] if url else []):
+                if key in self.done_log:
+                    return {"kind": "seen", "name": self.done_log[key]["name"], "at": self.done_log[key]["at"]}
         if name:
             sp = save_path or self.settings["save_path"]
             if os.path.exists(os.path.join(sp, name)):
                 return {"kind": "disk", "name": name}
+            hit = self.in_library(name)
+            if hit:
+                return {"kind": "library", "name": name, "path": hit}
         return None
+
+    def _dup_dirs(self):
+        """查重看哪些目录：保存位置、下完后移动到，再加上用户自己填的片库目录。"""
+        dirs = [self.settings.get("save_path", ""), self.settings.get("move_done_to", "")]
+        dirs += [x.strip() for x in (self.settings.get("dup_check_dirs") or "").splitlines()]
+        dirs += [v.get("save_path", "") for v in (self.settings.get("categories") or {}).values()]
+        out = []
+        for d in dirs:
+            if d and d not in out:
+                out.append(d)
+        return out
+
+    def in_library(self, name):
+        """这个名字的东西片库里已经有了？返回那个文件的路径。
+
+        比的是从名字里榨出来的编号（番号 / 货号），所以 `kss55.cc@APKH118`、
+        `APKH-118.mp4`、`APKH118_4K` 认得出是同一部。
+        """
+        if not name:
+            return None
+        try:
+            return self.media.find(name)
+        except OSError:
+            return None
 
     def _torrent_from_http(self, data, save_path):
         ih = self.bt.add_torrent_bytes(data, save_path)
         self.notify("info", "已从网页链接拿到种子", ih)
 
+    DUP_WHY = {"exists": "已经在下载列表里", "seen": "以前下过", "disk": "保存位置已经有了", "library": "片库里已经有了"}
+
     def _rss_add(self, link, save_path, category):
-        self.add_link(link, save_path, category, select_files=False)
-        self.notify("info", "RSS 自动下载", link[:80])
+        """订阅自动下载走这里。加成功返回空串，重复的不加、返回跳过的原因。
+
+        以前这里是直接加，手动添加那条路上的查重完全没用上 ——
+        一个合集帖里几十条链接，多半是片库里早就有的。
+        """
+        if self.settings.get("dup_skip_existing", True):
+            d = self.find_dup(link=link, save_path=save_path, history=False)
+            if d:
+                return f"{self.DUP_WHY.get(d['kind'], '重复')}：{d.get('name') or ''}"
+        kind, tid = self.add_link(link, save_path, category, select_files=False)
+        if kind == "bt":
+            # 磁力链这会儿还不知道名字，等拿到文件列表再按名字查一次（见 _dup_sweep）
+            self.bt.meta.setdefault(tid, {})["via"] = "rss"
+            self.bt.meta[tid]["dup_check"] = True
+        return ""
+
+    def _dup_sweep(self):
+        """磁力链刚加进来时只有一串哈希，名字要等文件列表到了才知道。
+        到了就按名字再查一次片库：真重复的连刚下的那点残片一起删掉。
+
+        只动订阅自己加的、而且几乎还没下的任务 —— 用户手动加的从不碰，
+        已经下了一半的也不碰（他可能就是想要另一个版本）。
+        """
+        if not self.settings.get("dup_remove_after_meta", False):
+            return
+        for t in self.bt.snapshot():
+            m = self.bt.meta.get(t["id"]) or {}
+            if not m.get("dup_check") or not t.get("has_metadata"):
+                continue
+            self.bt.meta[t["id"]].pop("dup_check", None)
+            if t["progress"] > 0.03 or t["progress"] >= 1:
+                continue
+            hit = self.in_library(t["name"])
+            if not hit:
+                self.media.add(t["name"], t["name"])   # 同一轮里的重复条目，自己之间也要挡
+                continue
+            try:
+                self.bt.remove(t["id"], delete_files=True)
+            except Exception as e:
+                print("查重删任务失败：", repr(e))
+                continue
+            self.notify("info", "查重跳过", f"{t['name'][:40]} —— 片库里已经有了")
+            self.rss.log.insert(0, {"time": time.time(), "title": t["name"], "rule": "查重",
+                                    "note": f"片库里已经有了，自动删掉：{os.path.basename(hit)}"})
+            self.rss.log = self.rss.log[:100]
+            self.rss.save()
 
     # ---------- 合并后的列表 ----------
     def snapshot(self):
@@ -298,6 +380,7 @@ class Core:
                 if n % 10 == 0:
                     self.bt.tick_slow()
                     self._log_done()
+                    self._dup_sweep()
                     self._watch_dir()
                     self._busy_check()
                 if n % 60 == 0:

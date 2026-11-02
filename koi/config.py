@@ -75,6 +75,11 @@ DEFAULT_SETTINGS = {
     "purge_stuck": False,          # 默认关着 —— 这是会删文件的，得你自己开
     "purge_stuck_days": 5,         # 加进来这么多天还没下完、而且进度这么久没动
     "purge_delete_files": True,    # 连已经下的那部分残片一起删
+    # 查重：已经有的别再下一遍
+    "dup_check_dirs": "",             # 额外的查重目录，一行一个（空 = 只看保存位置和「下完后移动到」）
+    "dup_skip_existing": True,        # 自动下载（订阅）时，查重目录里已经有的直接跳过
+    "dup_remove_after_meta": False,   # 磁力链拿到名字后再查一次，重复的连残片一起删（会删文件，默认关着）
+    "rss_max_per_item": 50,           # 一个帖子最多加几条链接（合集帖里一帖挂几十条）
     # 连接
     "listen_port": 51413,
     "max_connections": 500,

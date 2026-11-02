@@ -661,7 +661,7 @@ function renderRss(){
        <div id="rr-test"></div></div></div>`;
     fillCats('rr-cat'); $('rr-cat').value=r.category||'';
   } else {
-    body.innerHTML='<table class="t"><tr><th>时间</th><th>标题</th><th>规则</th></tr>'+(d.log||[]).map(l=>`<tr><td style="white-space:nowrap">${fmtD(l.time)}</td><td class="p">${esc(l.title)}</td><td>${esc(l.rule)}</td></tr>`).join('')+'</table>'+(d.log&&d.log.length?'':'<p class="sub">还没有自动下载过</p>');
+    body.innerHTML='<table class="t"><tr><th>时间</th><th>标题</th><th>规则</th><th>结果</th></tr>'+(d.log||[]).map(l=>`<tr><td style="white-space:nowrap">${fmtD(l.time)}</td><td class="p">${esc(l.title)}</td><td>${esc(l.rule)}</td><td class="sub">${esc(l.note||'')}</td></tr>`).join('')+'</table>'+(d.log&&d.log.length?'':'<p class="sub">还没有自动下载过</p>');
   }
 }
 function ruleFromForm(){return Object.assign({},editRule||{}, {name:$('rr-name').value,include:$('rr-inc').value,exclude:$('rr-exc').value,feeds:[...document.querySelectorAll('.rr-feed:checked')].map(c=>c.value),save_path:$('rr-path').value,category:$('rr-cat').value,enabled:editRule?editRule.enabled:true})}

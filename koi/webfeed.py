@@ -21,6 +21,7 @@ MAX_BYTES = 2 * 1024 * 1024
 DETAIL_PER_ROUND = 15      # 一轮最多进几个帖子页，免得被当成刷站
 DETAIL_GAP = 0.5           # 两次详情请求之间歇多久
 MIN_TITLE = 2              # 标题短于这个的当导航扔掉；中文两个字就能成词，别设大了
+MAX_LINKS_PER_PAGE = 300   # 一个帖子里最多认这么多条链接（真正加几条由订阅规则那边的上限决定）
 
 MAGNET_RE = re.compile(r"magnet:\?xt=urn:btih:[0-9a-zA-Z]{32,40}[^\s\"'<>\\]*", re.I)
 # 种子链接经常是相对路径（/attachment/9.torrent、down/9.torrent），所以从
@@ -222,21 +223,45 @@ def bare_hashes(text):
     return out
 
 
-def downloads_in(body, base):
-    """整页扫能下的东西：磁力链优先，然后种子文件，再是迅雷链接，
-    最后才退到「只给了一串 hash」这种情况。"""
+def _ih_of(link):
+    """链接指向的那个种子的身份：同一个 hash 不管写成磁力链还是裸 hash 都算一条。"""
+    m = re.search(r"btih:([0-9a-zA-Z]{32,40})", link or "")
+    return m.group(1).lower() if m else (link or "")
+
+
+def downloads_all(body, base, cap=0):
+    """整页扫能下的东西，全部返回。
+
+    一个帖子里挂几十条磁力链是常事（「30 部合集」这种）。以前这里只取第一条，
+    于是一个合集帖永远只下第一部 —— 现在整页都要。
+    顺序：磁力链、种子文件、迅雷链、光秃秃的 hash；同一个种子只留一条。
+    """
     text = body.decode("utf-8", "replace")
+    out, seen = [], set()
+
+    def push(link):
+        k = _ih_of(link)
+        if k and k not in seen:
+            seen.add(k)
+            out.append(link)
+
     for m in MAGNET_RE.finditer(text):
-        return m.group(0)
+        push(m.group(0))
     for m in TORRENT_RE.finditer(text):
-        return urllib.parse.urljoin(base, m.group(1))
+        push(urllib.parse.urljoin(base, m.group(1)))
     for m in THUNDER_RE.finditer(text):
         got = _unthunder(m.group(0))
         if got:
-            return got
+            push(got)
     for mag in bare_hashes(text):
-        return mag
-    return ""
+        push(mag)
+    return out[:cap] if cap > 0 else out
+
+
+def downloads_in(body, base):
+    """只要第一条。预览、以及「一帖一链」的场景用。"""
+    got = downloads_all(body, base, cap=1)
+    return got[0] if got else ""
 
 
 async def fetch(session, url, pattern, known, first_time=False):
@@ -262,19 +287,20 @@ async def fetch(session, url, pattern, known, first_time=False):
             continue
         # 第一次订阅只记录、不进详情页：反正旧条目本来就不下载
         if is_download(u):                    # 列表里直接给了磁力链/种子，不用进详情页
-            items.append({"title": t, "link": u, "guid": u, "date": "", "size": 0,
+            items.append({"title": t, "link": u, "links": [u], "guid": u, "date": "", "size": 0,
                           "page": u, "tried": True})
             continue
         if first_time or budget <= 0:
             # 第一次订阅：当旧条目记下就完了。额度用完：这轮先不进去，下轮接着抓
-            items.append({"title": t, "link": "", "guid": u, "date": "", "size": 0,
+            items.append({"title": t, "link": "", "links": [], "guid": u, "date": "", "size": 0,
                           "page": u, "tried": first_time})
             continue
         budget -= 1
         if budget < DETAIL_PER_ROUND - 1:
             await asyncio.sleep(DETAIL_GAP)
         d, _ = await get(session, u)
-        items.append({"title": t, "link": downloads_in(d, u) if d else "",
+        got = downloads_all(d, u, cap=MAX_LINKS_PER_PAGE) if d else []
+        items.append({"title": t, "link": got[0] if got else "", "links": got,
                       "guid": u, "date": "", "size": 0, "page": u, "tried": True})
     return items, ""
 

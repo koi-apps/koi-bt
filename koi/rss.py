@@ -56,8 +56,11 @@ def parse_feed(xml_bytes):
 
 
 class RssManager:
-    def __init__(self, add_fn):
-        self.add_fn = add_fn   # add_fn(link, save_path, category) -> 返回描述
+    def __init__(self, add_fn, settings=None, notify=None):
+        # add_fn(link, save_path, category)：加成功返回空串，已经有了就返回跳过的原因
+        self.add_fn = add_fn
+        self.settings = settings if settings is not None else {}
+        self.notify = notify or (lambda *a, **k: None)
         self.data = {"feeds": [], "rules": [], "seen": {}, "log": []}
         try:
             self.data.update(json.loads(C.RSS_FILE.read_text("utf-8")))
@@ -211,14 +214,45 @@ class RssManager:
                 if r.get("feeds") and feed["id"] not in r["feeds"]:
                     continue
                 if self.match(r, it["title"]):
-                    try:
-                        self.add_fn(it["link"], r.get("save_path") or None, r.get("category", ""))
-                        self.log.insert(0, {"time": time.time(), "title": it["title"], "rule": r.get("name", "")})
-                        self.log = self.log[:100]
-                    except Exception as e:
-                        self.log.insert(0, {"time": time.time(), "title": it["title"], "rule": f"失败：{e}"})
+                    self._download(it, r)
                     break
         del seen[:-2000]
+
+    def _download(self, it, rule):
+        """把一个条目里的链接都加进去。
+
+        一个帖子里挂着几十条磁力链是常事（「30 部合集」这种），以前只加第一条，
+        于是一个合集帖永远只下第一部。现在整帖都加，已经有的那些由 add_fn 挡掉。
+        """
+        cap = int(self.settings.get("rss_max_per_item", 50) or 0)
+        links = it.get("links") or ([it["link"]] if it.get("link") else [])
+        if cap > 0 and len(links) > cap:
+            links, cut = links[:cap], len(links) - cap
+        else:
+            cut = 0
+        added, skipped, errs = 0, 0, []
+        for link in links:
+            try:
+                why = self.add_fn(link, rule.get("save_path") or None, rule.get("category", ""))
+                if why:
+                    skipped += 1
+                else:
+                    added += 1
+            except Exception as e:
+                errs.append(str(e))
+        note = ""
+        if len(links) > 1 or skipped or errs:
+            note = f"{len(links)} 条：加 {added}"
+            if skipped:
+                note += f"，跳过 {skipped}（已经有了）"
+            if cut:
+                note += f"，超出上限没加 {cut}"
+        if errs:
+            note = (note + "，" if note else "") + f"失败 {len(errs)}：{errs[0][:60]}"
+        self.log.insert(0, {"time": time.time(), "title": it["title"], "rule": rule.get("name", ""), "note": note})
+        self.log = self.log[:100]
+        if added:
+            self.notify("info", "订阅自动下载", f"{it['title'][:40]}（{added} 条）")
 
     def view(self):
         return {

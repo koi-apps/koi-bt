@@ -152,6 +152,13 @@
     <label class="chk" style="margin-top:10px"><input type="checkbox" id="st-purge_stuck"> 自动清理下不动的任务</label>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0 0 26px" class="small">加进来超过 <input id="st-purge_stuck_days" type="number" min="1" style="width:64px"> 天还没下完、进度同样这么久没动、而且线上拼不出完整文件的，自动删掉</div>
     <label class="chk" style="margin-left:26px"><input type="checkbox" id="st-purge_delete_files"> 连已经下的那部分残片一起删</label>
+    <h4 style="margin:18px 0 4px">查重：已经有的别再下一遍</h4>
+    <label class="l">片库目录（一行一个；留空 = 只看保存位置和「下完后移动到」）</label>
+    <textarea id="st-dup_check_dirs" rows="2" placeholder="/volume1/Movies"></textarea>
+    <label class="chk"><input type="checkbox" id="st-dup_skip_existing"> 订阅自动下载时，这些目录里已经有的直接跳过</label>
+    <label class="chk"><input type="checkbox" id="st-dup_remove_after_meta"> 磁力链拿到名字后再查一次，重复的连刚下的残片一起删</label>
+    <div class="hint" style="margin:6px 0 0 26px">比的是名字里的编号（番号 / 货号），所以 kss55.cc@APKH118、APKH-118.mp4、APKH118_4K 认得出是同一部。只管订阅自动加的任务，手动加的从不动；已经下过 3% 的也不动。看的是目录里现在真的有什么，不是下载历史 —— 自己删掉的片子还能重新下。</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 0" class="small">一个帖子最多加 <input id="st-rss_max_per_item" type="number" min="1" style="width:64px"> 条链接<span class="sub">（合集帖里一帖挂着几十条）</span></div>
     <div class="hint" style="margin:6px 0 0 26px">四个条件要同时成立才会删：没下完、够老、进度卡了同样久、线上确实拼不出完整文件。只要还有人在做种或者现有的人能拼齐，就一直留着。自己做的种子不会被清。删掉的会记在数据目录的 purged.json 里。</div>
     <h4 style="margin:18px 0 4px">版本与更新</h4>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span>当前版本 <b id="cur-ver"></b></span><button onclick="checkUpdate(true)">🔄 检查更新</button><span id="upd-msg" class="sub small"></span></div>
