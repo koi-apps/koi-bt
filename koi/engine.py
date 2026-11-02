@@ -806,7 +806,12 @@ class Engine:
             if st.is_seeding or st.is_finished or st.progress >= 1:
                 continue                       # 下完的一律不碰
             m = self.meta.setdefault(ih, {})
-            # 进度动过就记一笔时间戳，卡没卡住全靠它。这段不管开关，一直记。
+            # 下面两样不管开关开没开都要记：等用户哪天想开的时候，历史已经攒好了。
+            # 不然开启当天所有任务才从零开始算，还得再干等 N 天才会生效。
+            if "first_added" not in m:
+                m["first_added"] = now
+                self._save_meta(ih)
+            # 进度动过就记一笔时间戳，卡没卡住全靠它
             p = round(st.progress, 3)
             if m.get("prog") != p:
                 m["prog"], m["prog_at"] = p, now
@@ -816,7 +821,7 @@ class Engine:
                 continue                       # 刚还在长，本轮不用看了
             if not on or m.get("own") or m.get("keep"):
                 continue                       # 自己做的种、手动标了保留的，不动
-            if now - m.setdefault("first_added", now) < limit:
+            if now - m["first_added"] < limit:
                 continue                       # 年头不够
             if now - m.get("prog_at", now) < limit:
                 continue                       # 卡的时间还不够久
