@@ -673,7 +673,7 @@ async function webAnalyze(){
   if(!r.ok){box.innerHTML='<div class="hint bad">'+esc(r.error||'分析失败')+'</div>';return}
   box.innerHTML='<div class="hint">② 这几组链接长得像列表，挑出帖子那一组：</div>'+r.groups.map(g=>
     '<div class="list-item" style="align-items:flex-start"><div class="grow">'
-    +'<b>'+g.count+' 条</b> <span class="sub small mono">'+esc(g.pattern)+'</span>'
+    +'<b>'+g.count+' 条</b> '+(g.nav?'<span class="warn small">像是分页或时间列，多半不是你要的</span> ':'')+'<span class="sub small mono">'+esc(g.pattern)+'</span>'
     +'<div class="sub small" style="margin-top:4px">'+g.sample.map(esc).join('<br>')+'</div></div>'
     +'<button onclick="webTry('+JSON.stringify(g.pattern).replace(/"/g,'&quot;')+')">就是这组</button></div>').join('');
 }

@@ -23,6 +23,8 @@ MIN_TITLE = 2              # 标题短于这个的当导航扔掉；中文两个
 
 MAGNET_RE = re.compile(r"magnet:\?xt=urn:btih:[0-9a-zA-Z]{32,40}[^\s\"'<>\\]*", re.I)
 TORRENT_RE = re.compile(r"""["'](https?://[^"'\s]+?\.torrent(?:\?[^"'\s]*)?)["']""", re.I)
+# 标题只剩数字和日期符号的，是页码或时间列，不是正文标题
+_NUMISH = re.compile(r"^[\d\s\-:/.,年月日时分秒]+$")
 _SKIP_EXT = (".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".svg", ".zip", ".rar")
 
 
@@ -123,6 +125,13 @@ def links_of(body, base):
     return [(u, best[u]) for u in order]
 
 
+def _navish(titles):
+    """这一组的标题是不是全是页码／日期？是的话多半是分页条或时间列。"""
+    if not titles:
+        return False
+    return sum(1 for t in titles if _NUMISH.match(t)) >= len(titles) * 0.7
+
+
 def guess_groups(links, base):
     """按长相把链接分组，猜哪一组才是「帖子列表」。"""
     self_shape = shape_of(base)
@@ -142,12 +151,18 @@ def guess_groups(links, base):
         avg = sum(len(t) for _, t in titled) / len(titled)
         # 光比条数会让分页（1 2 3 … 20）和表头排序链接压过正文，所以要乘标题长度
         score = len(titled) * min(avg, 40)
+        nav = _navish([t for _, t in titled])
+        if nav:
+            score *= 0.05            # 页码／日期当标题的，沉到最底下
+        if direct:
+            score *= 3
         out.append({
             "pattern": s,
             "count": len(titled),
             "sample": [t[:70] for _, t in titled[:3]],
             "sample_url": titled[0][0],
-            "_score": score * 3 if direct else score,
+            "nav": nav,
+            "_score": score,
         })
     out.sort(key=lambda x: x["_score"], reverse=True)
     for x in out:
