@@ -250,6 +250,15 @@ async def fetch(session, url, pattern, known, first_time=False):
     return items, ""
 
 
+def _spread(seq, k):
+    """均匀取 k 条来试。列表开头常年是置顶公告、版规这类没下载链接的东西，
+    只看前几条会把好好的一组误判成『抓不到』。"""
+    if len(seq) <= k:
+        return list(seq)
+    step = len(seq) / k
+    return [seq[min(int(i * step), len(seq) - 1)] for i in range(k)]
+
+
 async def preview(session, url, pattern=""):
     """界面上「预览」用：没给模式就返回候选分组，给了就试抓前几条看看能不能拿到磁力链。"""
     body, st = await get(session, url)
@@ -263,9 +272,10 @@ async def preview(session, url, pattern=""):
             return {"ok": False, "error": "没在这个页面里找到成组的链接。如果内容是滚动加载出来的，这种页面抓不了"}
         return {"ok": True, "groups": groups}
 
-    picked = [(u, t) for u, t in links if shape_of(u) == pattern and len(t) >= MIN_TITLE][:3]
-    if not picked:
+    matched = [(u, t) for u, t in links if shape_of(u) == pattern and len(t) >= MIN_TITLE]
+    if not matched:
         return {"ok": False, "error": "这个模式在当前页面上一条都没匹配上"}
+    picked = _spread(matched, 4)
     tried = []
     for i, (u, t) in enumerate(picked):
         if is_download(u):
