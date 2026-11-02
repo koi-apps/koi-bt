@@ -762,6 +762,10 @@ def build_app(core: Core):
             core.rss.add_feed(b["url"], b.get("name", ""), b.get("interval", 15),
                               b.get("kind", "rss"), b.get("pattern", ""))
             await core.rss.refresh(core.http.session, force=True)
+        elif op == "catchup":
+            f = next((x for x in core.rss.data["feeds"] if x["id"] == b["id"]), None)
+            if f:
+                await core.rss.catchup(core.http.session, f)
         elif op == "preview_web":
             return web.json_response(await webfeed.preview(core.http.session, b.get("url", ""), b.get("pattern", "")))
         elif op == "remove_feed":

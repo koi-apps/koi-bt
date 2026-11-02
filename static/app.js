@@ -644,7 +644,7 @@ function renderRss(){
        <div class="hint" style="margin-top:8px">把列表页地址填进来，我分析出哪一组链接是帖子，再进帖子页自动找磁力链。整个过程不需要站方提供任何东西。</div>
        <div class="two" style="margin-top:6px"><input id="wf-url" placeholder="列表页地址，例如 https://某站/forum.php?fid=1"><button onclick="webAnalyze()">① 分析这个页面</button></div>
        <div id="wf-out"></div></details>`+
-     d.feeds.map(f=>`<div style="margin-top:14px"><div style="display:flex;gap:8px;align-items:center"><b>${esc(f.name)}</b>${f.type==='web'?'<span class="badge">网页订阅</span>':''}<span class="sub small mono grow">${esc(f.url)}</span>${f.error?`<span class="bad small">${esc(f.error)}</span>`:''}<button class="danger" onclick="if(confirm('取消订阅？'))rssOp({op:'remove_feed',id:'${f.id}'})">取消订阅</button></div>
+     d.feeds.map(f=>`<div style="margin-top:14px"><div style="display:flex;gap:8px;align-items:center"><b>${esc(f.name)}</b>${f.type==='web'?'<span class="badge">网页订阅</span>':''}<span class="sub small mono grow">${esc(f.url)}</span>${f.error?`<span class="bad small">${esc(f.error)}</span>`:''}<button onclick="rssCatchup('${f.id}')" title="订阅时跳过的那批历史条目，现在补下来">补下已有的</button><button class="danger" onclick="if(confirm('取消订阅？'))rssOp({op:'remove_feed',id:'${f.id}'})">取消订阅</button></div>
        <div class="ftree" style="max-height:260px"><table class="t">${(d.items[f.id]||[]).map(it=>`<tr><td class="p">${esc(it.title)}</td><td class="small sub" style="white-space:nowrap">${it.size?fmtB(it.size):''}</td><td style="width:72px">${it.link?`<button style="padding:2px 8px" onclick='rssOp({op:"download",link:${JSON.stringify(it.link).replace(/'/g,"&#39;")}});toast("已添加")'>下载</button>`:(it.page?'<span class="sub small">排队中</span>':'')}</td></tr>`).join('')||'<tr><td class="sub">还没有条目</td></tr>'}</table></div></div>`).join('');
   } else if(rssTab==='rules'){
     const r=editRule||{name:'',include:'',exclude:'',feeds:[],save_path:'',category:'',enabled:true};
@@ -665,6 +665,15 @@ function renderRss(){
   }
 }
 function ruleFromForm(){return Object.assign({},editRule||{}, {name:$('rr-name').value,include:$('rr-inc').value,exclude:$('rr-exc').value,feeds:[...document.querySelectorAll('.rr-feed:checked')].map(c=>c.value),save_path:$('rr-path').value,category:$('rr-cat').value,enabled:editRule?editRule.enabled:true})}
+async function rssCatchup(id){
+  const f=(rssData&&rssData.feeds||[]).find(x=>x.id===id)||{};
+  const n=((rssData||{}).items||{})[id]||[];
+  if(!confirm('订阅的时候，列表里已有的条目是只记账不下载的（免得一订阅就灌一堆任务）。\n\n现在要把它们按你的规则重新过一遍，命中的直接加进下载。\n\n当前这个源记录了 '+n.length+' 条。规则「包含」留空的话会全部命中，确定吗？'))return;
+  toast('正在补抓，要逐个进帖子页，慢一点…');
+  rssData=await api('/api/rss',{op:'catchup',id:id});
+  renderRss();
+  toast('补抓跑完了，看「下载记录」那页');
+}
 let wfUrl='';
 async function webAnalyze(){
   wfUrl=$('wf-url').value.trim(); if(!wfUrl){toast('先填列表页地址');return}

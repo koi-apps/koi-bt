@@ -142,6 +142,31 @@ class RssManager:
                 f["error"] = str(e)[:200] or type(e).__name__
         self.save()
 
+    async def catchup(self, session, f):
+        """把这个源现在列表里已有的条目也过一遍规则。
+
+        首次订阅是只记账不下载的（不然一订阅就灌几十个任务），但用户往往
+        就是冲着「现在这些」来的，所以留个手动补抓的口子。
+        """
+        self.data["seen"][f["id"]] = []
+        if f.get("type") == "web":
+            items, err = await webfeed.fetch(session, f["url"], f.get("pattern", ""), set(), first_time=False)
+            f["error"] = err
+        else:
+            items, err = [], ""
+            try:
+                async with session.get(f["url"], headers={"User-Agent": "KoiDown RSS"},
+                                       timeout=aiohttp.ClientTimeout(total=30)) as r:
+                    items = parse_feed(await r.read())
+                f["error"] = ""
+            except Exception as e:
+                f["error"] = str(e)[:200] or type(e).__name__
+        if items:
+            self.items[f["id"]] = items[:200]
+            self._apply_rules(f, items, force=True)
+        self.save()
+        return len([i for i in items if i["link"]])
+
     async def _refresh_web(self, session, f):
         """网页订阅：列表页 → 帖子页 → 磁力链。去重交给 _apply_rules，这里只管抓。"""
         known = set(self.data["seen"].get(f["id"], []))
@@ -156,9 +181,9 @@ class RssManager:
             self.items[f["id"]] = items[:200]
             self._apply_rules(f, items)
 
-    def _apply_rules(self, feed, items):
+    def _apply_rules(self, feed, items, force=False):
         seen = self.data["seen"].setdefault(feed["id"], [])
-        first_time = not seen
+        first_time = not seen and not force
         for it in items:
             if it["guid"] in seen:
                 continue
