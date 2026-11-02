@@ -103,11 +103,12 @@ def keys_of(name):
 class MediaIndex:
     """查重目录里现有的东西，按钥匙建索引。dirs_fn 每次刷新时重新问一遍目录列表。"""
 
-    def __init__(self, dirs_fn, ttl=300, max_entries=200000):
+    def __init__(self, dirs_fn, ttl=300, max_entries=200000, max_same=8):
         self.dirs_fn = dirs_fn
         self.ttl = ttl
         self.max_entries = max_entries
-        self.index = {}        # key -> 第一个撞上的路径（扫目录来的）
+        self.max_same = max_same
+        self.index = {}        # key -> 撞上这把钥匙的路径（扫目录来的，每把钥匙最多留几条）
         self.extra = {}        # 运行中手动记进来的，扫目录不会把它冲掉
         self.built = 0
         self.scanned = 0
@@ -127,20 +128,36 @@ class MediaIndex:
                     if nm in files and os.path.splitext(nm)[1].lower() not in VIDEO_EXT:
                         continue
                     n += 1
+                    full = os.path.join(root, nm)
                     for k in keys_of(nm):
-                        idx.setdefault(k, os.path.join(root, nm))
+                        same = idx.setdefault(k, [])
+                        if len(same) < self.max_same:
+                            same.append(full)
                 if n > self.max_entries:
                     break
         self.index, self.built, self.scanned = idx, time.time(), n
 
     def find(self, name):
-        """已经有了就返回那个路径，没有返回 None。"""
+        """已经有了就返回其中一个路径，没有返回 None。"""
+        got = self.find_all(name)
+        return got[0] if got else None
+
+    def find_all(self, name):
+        """所有同编号的路径。
+
+        调用方得自己把「这就是我本人的文件」滤掉 —— 下载中的任务自己的文件
+        往往就在查重目录里（保存位置也在查重范围内），不滤会自己把自己判成重复。
+        """
         self.refresh()
+        out = []
         for k in keys_of(name):
-            hit = self.index.get(k) or self.extra.get(k)
-            if hit:
-                return hit
-        return None
+            for p in self.index.get(k, []):
+                if p not in out:
+                    out.append(p)
+            e = self.extra.get(k)
+            if e and e not in out:
+                out.append(e)
+        return out
 
     def add(self, name, path=""):
         """记一笔「这个已经算有了」。同一轮里加进来的重复条目靠它互相挡住。"""

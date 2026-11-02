@@ -230,9 +230,12 @@ class Core:
             self.bt.meta[t["id"]].pop("dup_check", None)
             if t["progress"] > 0.03 or t["progress"] >= 1:
                 continue
-            hit = self.in_library(t["name"])
+            # 任务自己的文件就在保存位置里，而保存位置也在查重范围内 —— 先把自己滤掉，
+            # 不然刚加进来的任务一拿到名字就会把自己当成重复删掉
+            own = os.path.join(t.get("save_path") or "", t["name"])
+            hit = next((h for h in self.media.find_all(t["name"]) if not h.startswith(own)), None)
             if not hit:
-                self.media.add(t["name"], t["name"])   # 同一轮里的重复条目，自己之间也要挡
+                self.media.add(t["name"], own or t["name"])   # 同一轮里的重复条目，自己之间也要挡
                 continue
             try:
                 self.bt.remove(t["id"], delete_files=True)
