@@ -101,6 +101,8 @@ class Engine:
             "user_agent": f"KoiDown/{C.VERSION} libtorrent/{lt.__version__}",
             "peer_fingerprint": "-KO1100-",
             "listen_interfaces": listen,
+            # 出站也绑同一块网卡。不绑的话「绑定网卡」只管监听端口，
+            # 连 peer、连 tracker 还是按系统路由走 —— 挂 VPN 时真实 IP 照样漏出去。
             "outgoing_interfaces": iface,
             "enable_dht": True,
             "enable_lsd": True,
