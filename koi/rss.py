@@ -13,6 +13,9 @@ from . import config as C
 from . import webfeed
 
 
+MAX_TRIES = 3          # 一个帖子进去看过但没拿到链接，最多再给它两次机会
+
+
 def _text(el, *names):
     for n in names:
         x = el.find(n)
@@ -61,7 +64,7 @@ class RssManager:
         self.add_fn = add_fn
         self.settings = settings if settings is not None else {}
         self.notify = notify or (lambda *a, **k: None)
-        self.data = {"feeds": [], "rules": [], "seen": {}, "log": []}
+        self.data = {"feeds": [], "rules": [], "seen": {}, "log": [], "tries": {}}
         try:
             self.data.update(json.loads(C.RSS_FILE.read_text("utf-8")))
         except (OSError, ValueError):
@@ -198,15 +201,24 @@ class RssManager:
     def _apply_rules(self, feed, items, force=False):
         seen = self.data["seen"].setdefault(feed["id"], [])
         first_time = not seen and not force
+        tries = self.data.setdefault("tries", {}).setdefault(feed["id"], {})
         for it in items:
             if it["guid"] in seen:
                 continue
             if not it["link"]:
-                # tried=True 表示确实进去看过、里面就是没有，记下别再重试；
-                # 没这个标记的是这轮没排上队（或本来就是 RSS 的空条目），留着下轮再说
+                # tried=True 表示确实进去看过、里面就是没有。
+                # 但「这一次没拿到」不等于「永远拿不到」—— 网络抽风、种子缓存临时挂了
+                # 都会这样，一次就死心会把本该下的帖子永久漏掉。试够 MAX_TRIES 次才记死。
+                # 没有 tried 标记的是这轮没排上队（或本来就是 RSS 的空条目），留着下轮再说。
                 if it.get("tried"):
-                    seen.append(it["guid"])
+                    n = tries.get(it["guid"], 0) + 1
+                    if n >= MAX_TRIES:
+                        tries.pop(it["guid"], None)
+                        seen.append(it["guid"])
+                    else:
+                        tries[it["guid"]] = n
                 continue
+            tries.pop(it["guid"], None)
             seen.append(it["guid"])
             if first_time:
                 continue   # 第一次订阅不把历史条目全下一遍
@@ -219,6 +231,9 @@ class RssManager:
                     self._download(it, r)
                     break
         del seen[:-2000]
+        if len(tries) > 500:                      # 别让重试计数无限长
+            for k in list(tries)[:-500]:
+                tries.pop(k, None)
 
     def _download(self, it, rule):
         """把一个条目里的链接都加进去。
