@@ -62,7 +62,14 @@ jobs:
           PYTHONIOENCODING: utf-8
         shell: pwsh
         run: |
-          $notes = (git tag -l --format='%(contents)' $env:GITHUB_REF_NAME) -join "`n"
+          # checkout 建的是轻量 tag，%(contents) 会退化成提交说明 —— 必须重新拉一次带注释的 tag 对象
+          git fetch --force origin "refs/tags/$env:GITHUB_REF_NAME`:refs/tags/$env:GITHUB_REF_NAME"
+          $full = (git tag -l --format='%(contents)' $env:GITHUB_REF_NAME) -join "`n"
+          $full = $full.Trim()
+          # 发布页放全文；客户端更新提示只放标题 + 链接（弹窗和顶栏放不下长文）
+          $head = ($full -split "`n")[0].Trim()
+          $notes = "$head`n完整说明：https://github.com/${{ github.repository }}/releases/tag/$env:GITHUB_REF_NAME"
+          $full | Out-File -Encoding utf8 release_body.txt
           python tools/release_ci.py "${{ steps.ver.outputs.version }}" "dist/KOI-BT-${{ steps.ver.outputs.version }}-portable.zip" "${{ github.repository }}" "$notes"
 
       - name: SHA-256
@@ -83,6 +90,7 @@ jobs:
             latest.json
           fail_on_unmatched_files: false
           generate_release_notes: true
+          body_path: release_body.txt
 
   # 群晖 DSM 7 套件（Intel / ARM），挂到同一个 Release
   spk:
