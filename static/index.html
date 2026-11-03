@@ -15,10 +15,9 @@
     <button class="tab on" data-f="all">全部 <span id="c-all"></span></button>
     <button class="tab" data-f="dl">下载中 <span id="c-dl"></span></button>
     <button class="tab" data-f="done">已完成 <span id="c-done"></span></button>
+    <button class="tab" onclick="openRemoved()" title="看看程序自动帮你删掉了哪些任务">🗑 已删除</button>
     <button class="tab" data-f="bad" title="线上找不到完整文件、可能下不完的任务">资源不足 <span id="c-bad"></span></button>
     <button class="tab" data-f="http">直链下载 <span id="c-http"></span></button>
-    <span class="tabsep"></span>
-    <button class="tab" onclick="openRemoved()" title="看看程序自动帮你删掉了哪些任务">🗑 已删除</button>
   </div>
   <select id="catFilter" style="width:auto" title="按分类筛选"><option value="">全部分类</option></select>
   <div class="grow"></div>
