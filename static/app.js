@@ -63,7 +63,7 @@ function rowHtml(t){
   else if(done) meta=`<span>大小 <b>${fmtB(t.size)}</b></span>${t.type==='bt'?`<span>已上传 <b>${fmtB(t.uploaded)}</b></span><span>分享率 <b>${t.ratio}</b></span>`:''}<span>${t.state}</span>`;
   else meta=`<span><b>${pct}%</b> · ${t.size?fmtB(t.done)+' / '+fmtB(t.size):'大小未知'}</span>
     ${t.type==='bt'?`<span title="已连上 / 全网">做种 <b>${t.seeds}</b>/${t.seeds_total}</span><span>下载者 <b>${t.peers}</b>/${t.peers_total}</span>
-    ${t.availability!=null?`<span title="线上能凑出几份完整文件，低于 1 就可能下不完">可用性 <b>${t.availability.toFixed(2)}</b></span>`:''}`:`<span>${t.threads||0} 线程</span>`}<span>${t.state}</span>`;
+    ${t.availability!=null?`<span title="线上能凑出几份完整文件，低于 1 就可能下不完">可用性 <b>${(Math.floor(t.availability*100)/100).toFixed(2)}</b></span>`:''}`:`<span>${t.threads||0} 线程</span>`}<span>${t.state}</span>`;
   let segs='';
   if(t.type==='http'&&!done&&t.segments&&t.segments.length>1&&t.size){
     segs='<div class="segs">'+t.segments.slice().sort((a,b)=>a[0]-b[0]).map(s=>{const len=s[1]-s[0]+1;const p=len>0?Math.min(100,(s[2]-s[0])/len*100):100;return`<i style="flex:${len}"><b style="width:${p}%"></b></i>`}).join('')+'</div>';
@@ -132,6 +132,22 @@ function cmpRows(a,b){ const f=SORT_VAL[sortK]||SORT_VAL.added, x=f(a), y=f(b); 
 function setSort(k){ if(sortK===k) sortD=-sortD; else { sortK=k; sortD=(k==='name'||k==='eta'||k==='done')?1:-1 } try{localStorage.setItem('koi_sort',JSON.stringify({k:sortK,d:sortD}))}catch(e){} render() }
 function renderHead(){ document.querySelectorAll('#listhead .lh').forEach(b=>{ const on=b.dataset.k===sortK; b.classList.toggle('on',on); b.dataset.arrow=on?(sortD>0?' ▲':' ▼'):'' }) }
 document.querySelectorAll('#listhead .lh').forEach(b=>b.onclick=()=>setSort(b.dataset.k));
+/* 🗑 已删除：自动删掉的任务留痕，不然用户只会发现任务莫名其妙少了 */
+async function openRemoved(){
+  openM('m-removed');
+  const box=$('rm-body'); box.innerHTML='<div class="hint">读取中…</div>';
+  let rows; try{ rows=await api('/api/removed') }catch(e){ box.innerHTML='<div class="hint bad">读不出来：'+esc(''+e)+'</div>'; return }
+  if(!rows||!rows.length){ box.innerHTML='<div class="hint">还没有自动删掉过任何任务。</div>'; return }
+  box.innerHTML='<table class="t"><tr><th>删掉的时间</th><th>名字</th><th>删的时候下了多少</th><th>为什么删</th></tr>'
+    +rows.map(r=>`<tr><td style="white-space:nowrap">${fmtD(r.time)}</td><td class="p">${esc(r.name||'')}</td>`
+      +`<td class="sub small" style="white-space:nowrap">${((r.progress||0)*100).toFixed(1)}%・${fmtB(r.bytes||0)}</td>`
+      +`<td class="sub small">${esc(r.why||'')}${r.detail?'<br>'+esc(r.detail):''}</td></tr>`).join('')
+    +'</table>';
+}
+async function clearRemoved(){
+  if(!confirm('清空这份记录？任务早就删掉了，这里只是留痕，清掉不影响任何文件。'))return;
+  await api('/api/removed',{}); openRemoved();
+}
 function toggleAll(on){ const vis=data.filter(pass); if(on) vis.forEach(t=>sel.add(t.id)); else vis.forEach(t=>sel.delete(t.id)); render() }
 function tog(id,e){e.stopPropagation();sel.has(id)?sel.delete(id):sel.add(id);render()}
 document.addEventListener('click',e=>{const r=e.target.closest('.row');if(r&&!e.target.closest('button,input')){const id=r.dataset.id;if(e.shiftKey&&sel.size){const ids=data.filter(pass).map(t=>t.id);const a=ids.indexOf([...sel].pop()),b=ids.indexOf(id);ids.slice(Math.min(a,b),Math.max(a,b)+1).forEach(x=>sel.add(x))}else{sel.has(id)?sel.delete(id):sel.add(id)}render()}});   // 点一行 = 勾 / 取消这一行，和左边的勾选框一样，不会把别的取消掉

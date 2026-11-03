@@ -129,7 +129,8 @@ canvas.chart{width:100%;height:220px;display:block}
 .updbar .notes{color:var(--sub);font-size:12px;white-space:pre-line;flex:1;min-width:200px}
 .updbar .bar{height:6px;width:200px;background:var(--bar);border-radius:6px;overflow:hidden}.updbar .bar i{display:block;height:100%;background:var(--grad)}
 /* 带标签页的弹窗固定高度，切标签时窗口不跳 */
-#m-set .dbody,#m-det .dbody,#m-rss .dbody{overflow-y:auto;scrollbar-gutter:stable}
+#m-set .dbody,#m-det .dbody,#m-rss .dbody,#m-removed .dbody{overflow-y:auto;scrollbar-gutter:stable}
+#m-removed .dbody{max-height:60vh}
 /* 弹窗靠上固定位置：内容变高只往下长，不会整体上下跳 */
 .mask{align-items:flex-start;padding-top:6vh}
 .mask .dlg{max-height:88vh}

@@ -162,7 +162,9 @@ class RssManager:
         """
         self.data["seen"][f["id"]] = []
         if f.get("type") == "web":
-            items, err = await webfeed.fetch(session, f["url"], f.get("pattern", ""), set(), first_time=False)
+            # 补抓是用户主动点的，一次多走几个帖子页，免得他点七八遍
+            items, err = await webfeed.fetch(session, f["url"], f.get("pattern", ""), set(),
+                                             first_time=False, budget=webfeed.CATCHUP_PER_ROUND)
             f["error"] = err
         else:
             items, err = [], ""

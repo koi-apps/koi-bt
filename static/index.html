@@ -22,6 +22,7 @@
   <div class="grow"></div>
   <input class="search" id="q" placeholder="🔍 搜索名字">
   <button onclick="openRss()" title="RSS 订阅自动下载">📡 订阅</button>
+  <button onclick="openRemoved()" class="hide-m" title="看看自动帮你删掉了哪些任务">🗑 已删除</button>
   <button onclick="openCreate()" class="hide-m" title="把自己的文件做成种子分享">🧩 做种子</button>
   <button onclick="openSettings()">⚙️ 设置</button>
 </header>
@@ -49,6 +50,8 @@
   <div class="lh-main">
     <label for="selAll" class="lh-all">全选</label>
     <span class="sub small" id="selN"></span>
+    <button class="lh" data-k="name">文件名</button>
+    <button class="lh" data-k="added">添加时间</button>
   </div>
   <button class="lh r" data-k="eta">剩余时间</button>
   <button class="lh r" data-k="down">速度</button>
@@ -258,6 +261,12 @@
 </div></div>
 
 <!-- RSS -->
+<div class="mask" id="m-removed"><div class="dlg" style="width:760px">
+  <h3>🗑 自动删掉的任务<span class="grow"></span><button onclick="clearRemoved()">清空记录</button><button class="ghost" onclick="closeM('m-removed')">✕</button></h3>
+  <div class="dbody" id="rm-body"></div>
+  <p class="small sub" style="margin:10px 0 0">这里只记「程序自己删的」：查重撞上片库里已经有的、以及长期下不动被自动清理的。你自己点删除的不记在这儿。</p>
+</div></div>
+
 <div class="mask" id="m-rss"><div class="dlg wide">
   <h3>📡 RSS 订阅 · 自动追剧<span class="grow"></span><button onclick="rssOp({op:'refresh'})">🔄 立即刷新</button><button class="ghost" onclick="closeM('m-rss')">✕</button></h3>
   <div class="dtabs" id="rss-tabs">

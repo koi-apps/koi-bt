@@ -3,6 +3,7 @@ import asyncio
 import ipaddress
 import hashlib
 import json
+import math
 import mimetypes
 import os
 import re
@@ -19,6 +20,7 @@ from aiohttp import web
 from . import config as C
 from . import net
 from . import winsys
+from . import engine
 from .engine import Engine
 from .httpdl import HttpManager, decode_special
 from .rss import RssManager, discover
@@ -203,11 +205,17 @@ class Core:
         以前这里是直接加，手动添加那条路上的查重完全没用上 ——
         一个合集帖里几十条链接，多半是片库里早就有的。
         """
+        # 跟一跳取回来的种子，原文件还在手上 —— 直接用，省得再去网上找一遍元数据，
+        # 而且这会儿就知道名字，查重能一次查准
+        data = webfeed.take_torrent(link)
         if self.settings.get("dup_skip_existing", True):
-            d = self.find_dup(link=link, save_path=save_path, history=False)
+            d = self.find_dup(data=data, link=None if data else link, save_path=save_path, history=False)
             if d:
                 return f"{self.DUP_WHY.get(d['kind'], '重复')}：{d.get('name') or ''}"
-        kind, tid = self.add_link(link, save_path, category, select_files=False)
+        if data:
+            tid, kind = self.bt.add_torrent_bytes(data, save_path, category, select_files=False), "bt"
+        else:
+            kind, tid = self.add_link(link, save_path, category, select_files=False)
         if kind == "bt":
             # 磁力链这会儿还不知道名字，等拿到文件列表再按名字查一次（见 _dup_sweep）
             self.bt.meta.setdefault(tid, {})["via"] = "rss"
@@ -242,6 +250,9 @@ class Core:
             except Exception as e:
                 print("查重删任务失败：", repr(e))
                 continue
+            self.bt.log_removed(t["id"], t["name"], t["progress"],
+                                int(t.get("size", 0) * t["progress"]),
+                                "片库里已经有了", os.path.basename(hit))
             self.notify("info", "查重跳过", f"{t['name'][:40]} —— 片库里已经有了")
             self.rss.log.insert(0, {"time": time.time(), "title": t["name"], "rule": "查重",
                                     "note": f"片库里已经有了，自动删掉：{os.path.basename(hit)}"})
@@ -326,9 +337,9 @@ class Core:
         if st.has_metadata:
             if st.num_seeds == 0 and st.distributed_copies < 1 and not st.is_seeding:
                 reach = self.bt._reachable(h, st)
-                add("bad", "线上没有完整文件", f"当前连上的人凑起来最多能下到 {reach*100:.1f}%。等有完整文件的人上线，或者换一个种子", "reannounce")
+                add("bad", "没人有完整文件", f"现在连上的人手上的碎片凑起来是 {engine.pct_text(reach)}%，差 {engine.pct_text(1 - reach)}% 没人有。等有完整文件的人上线，或者换一个种子", "reannounce")
             elif not st.is_seeding:
-                add("ok", "做种人数", f"连上 {st.num_seeds} 个有完整文件的人，可用性 {st.distributed_copies:.2f}")
+                add("ok", "做种人数", f"连上 {st.num_seeds} 个有完整文件的人，可用性 {math.floor(st.distributed_copies * 100) / 100:.2f}")
         else:
             add("warn" if st.num_peers == 0 else "ok", "种子信息", "还在找种子信息，目前一个人都没找到" if st.num_peers == 0 else f"还在找种子信息，已连上 {st.num_peers} 人", "reannounce")
         lim = self.settings["alt_download_limit_kb"] if self.bt._alt_active() else self.settings["download_limit_kb"]
@@ -676,6 +687,16 @@ def build_app(core: Core):
                         winsys.open_folder(st.save_path, os.path.join(st.save_path, st.name))
                 else:
                     core.bt.action(tid, act, **b)
+        return web.json_response({"ok": True})
+
+    @routes.get("/api/removed")
+    async def removed(req):
+        """自动删掉了哪些任务。界面上「🗑 已删除」那页用。"""
+        return web.json_response(core.bt.removed_log())
+
+    @routes.post("/api/removed")
+    async def removed_clear(req):
+        core.bt.clear_removed_log()
         return web.json_response({"ok": True})
 
     @routes.get("/api/files/{ih}")

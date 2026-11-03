@@ -1,5 +1,6 @@
 """BT 内核：libtorrent 会话、任务管理、红绿灯、吸血屏蔽、分享率、边下边播的数据支持。"""
 import hashlib
+import math
 import ipaddress
 import os
 import re
@@ -16,6 +17,18 @@ from . import config as C
 from . import net
 
 CGNAT = ipaddress.ip_network("100.64.0.0/10")
+
+
+def pct_text(frac):
+    """百分比一律往下取整。
+
+    四舍五入会把 99.97% 写成 100.0%，于是界面上出现「下不完，最多只能下到 100.0%」
+    这种自相矛盾的话。差一个块也是差，不能显示成 100。
+    """
+    p = math.floor(max(0.0, min(1.0, frac)) * 1000) / 10
+    if frac < 1 and p >= 100:
+        p = 99.9
+    return f"{p:.1f}"
 
 # 只下不传的客户端（参考 qBittorrent-Enhanced-Edition 的默认屏蔽表）
 LEECH_PEER_ID = re.compile(r"^-(XL|SD|XF|QD|BN|DL|TS|FG|TT|NX|SP|GT|BC00|UW)\d*", re.I)
@@ -500,10 +513,10 @@ class Engine:
         if reach >= 0.9999:
             return {"level": "green", "text": "线上各部分凑得齐，可以下完"}
         if age < 120:
-            return {"level": "wait", "text": f"观察中：目前最多能下到 {reach*100:.1f}%"}
+            return {"level": "wait", "text": f"观察中：目前凑得出 {pct_text(reach)}%"}
         if st.list_seeds > 0:
-            return {"level": "yellow", "text": f"tracker 说有 {st.list_seeds} 个人有完整文件，但还没连上。目前最多下到 {reach*100:.1f}%"}
-        return {"level": "red", "text": f"线上没有完整文件，最多只能下到 {reach*100:.1f}%。建议换一个做种多的种子"}
+            return {"level": "yellow", "text": f"tracker 说有 {st.list_seeds} 个人有完整文件，但还没连上。现在连上的人凑得出 {pct_text(reach)}%"}
+        return {"level": "red", "text": f"现在连上的人里没人有完整文件，手上的碎片凑起来差 {pct_text(1 - reach)}% 不够。等有完整文件的人上线，或者换一个种子"}
 
     # ================= 列表 =================
     def snapshot(self):
@@ -832,22 +845,53 @@ class Engine:
             if self._reachable(h, st) >= 0.9999:
                 continue                       # 现有这些人拼得出完整文件，也有救
             name = st.name or ih[:8]
-            self._log_purge(ih, name, st.progress, st.total_wanted_done)
+            self.log_removed(ih, name, st.progress, st.total_wanted_done,
+                             f"{days:g} 天没有进展，线上也拼不出完整文件")
             self.notify("warn", "自动清理：%g 天没有进展，线上也拼不出完整文件" % days, name)
             self.remove(ih, delete_files=bool(s.get("purge_delete_files", True)))
 
-    def _log_purge(self, ih, name, progress, done_bytes):
-        """删了什么要留痕，不然用户只会发现任务莫名其妙少了。"""
+    def log_removed(self, ih, name, progress, done_bytes, why, detail=""):
+        """自动删掉的任务要留痕，不然用户只会发现任务莫名其妙少了。
+
+        界面上「🗑 已删除」那页读的就是这个文件。只记自动删的 —— 用户自己点删除的不记，
+        那是他自己干的，不需要我们解释。
+        """
         import json
         f = C.DATA_DIR / "purged.json"
         try:
             lst = json.loads(f.read_text("utf-8"))
         except (OSError, ValueError):
             lst = []
+        if not isinstance(lst, list):
+            lst = []
         lst.insert(0, {"time": time.time(), "hash": ih, "name": name,
-                       "progress": round(progress, 4), "bytes": int(done_bytes)})
+                       "progress": round(progress, 4), "bytes": int(done_bytes),
+                       "why": why, "detail": detail})
         try:
             f.write_text(json.dumps(lst[:200], ensure_ascii=False, indent=1), "utf-8")
+        except OSError:
+            pass
+        return lst
+
+    @staticmethod
+    def removed_log():
+        """读「已删除」记录。老版本存的没有 why 字段，补一个默认值。"""
+        import json
+        try:
+            lst = json.loads((C.DATA_DIR / "purged.json").read_text("utf-8"))
+        except (OSError, ValueError):
+            return []
+        if not isinstance(lst, list):
+            return []
+        for x in lst:
+            x.setdefault("why", "自动清理")
+            x.setdefault("detail", "")
+        return lst
+
+    @staticmethod
+    def clear_removed_log():
+        try:
+            (C.DATA_DIR / "purged.json").unlink()
         except OSError:
             pass
 
