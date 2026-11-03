@@ -172,7 +172,8 @@ function showFolder(id){
 }
 function copyFolder(){ navigator.clipboard.writeText($('of-path').textContent).then(()=>{$('of-copy').textContent=I18N.t('已复制')}) }
 async function allAct(a){await api('/api/action',{action:a,ids:data.map(t=>t.id)});poll1()}
-document.querySelectorAll('#tabs .tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('#tabs .tab').forEach(x=>x.classList.remove('on'));b.classList.add('on');filter=b.dataset.f;render()});
+// 只给真正的筛选页签绑切换；「已删除」也长在页签行里，但它是打开弹窗的，不参与筛选
+document.querySelectorAll('#tabs .tab[data-f]').forEach(b=>b.onclick=()=>{document.querySelectorAll('#tabs .tab[data-f]').forEach(x=>x.classList.remove('on'));b.classList.add('on');filter=b.dataset.f;render()});
 $('q').oninput=render; $('catFilter').onchange=render;
 
 /* ---------- 轮询 / 事件 ---------- */

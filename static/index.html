@@ -17,12 +17,13 @@
     <button class="tab" data-f="done">已完成 <span id="c-done"></span></button>
     <button class="tab" data-f="bad" title="线上找不到完整文件、可能下不完的任务">资源不足 <span id="c-bad"></span></button>
     <button class="tab" data-f="http">直链下载 <span id="c-http"></span></button>
+    <span class="tabsep"></span>
+    <button class="tab" onclick="openRemoved()" title="看看程序自动帮你删掉了哪些任务">🗑 已删除</button>
   </div>
   <select id="catFilter" style="width:auto" title="按分类筛选"><option value="">全部分类</option></select>
   <div class="grow"></div>
   <input class="search" id="q" placeholder="🔍 搜索名字">
   <button onclick="openRss()" title="RSS 订阅自动下载">📡 订阅</button>
-  <button onclick="openRemoved()" class="hide-m" title="看看自动帮你删掉了哪些任务">🗑 已删除</button>
   <button onclick="openCreate()" class="hide-m" title="把自己的文件做成种子分享">🧩 做种子</button>
   <button onclick="openSettings()">⚙️ 设置</button>
 </header>
