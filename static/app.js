@@ -86,6 +86,7 @@ function rowHtml(t){
       <div class="pills"><div class="health h-${t.health.level}"><span class="dot"></span><span>${esc(t.health.text)}</span></div>${seedPill(t)}</div>
       ${t.error&&t.type==='bt'?`<div class="err">出错：${esc(t.error)}</div>`:''}
     </div>
+    <div class="eta elapsed">${elapsedHtml(t,done)}</div>
     <div class="eta">${etaHtml(t,done)}</div>
     <div class="spd">${spdHtml(t,done)}</div>
     <div class="acts">${acts.join('')}</div></div>`;
@@ -102,6 +103,17 @@ function seedPill(t){
   return `<div class="health h-seed"><span class="dot"></span><span>正在做种</span> · ${tail}</div>`;
 }
 // 剩余时间：放在速度左边（迅雷 / qBittorrent 都是把剩余时间和速度挨着放）
+// 这个任务下了多久：没下完就是「加进来到现在」，下完了就是实际花的总时间
+function elapsedOf(t){
+  if(!t.added) return null;
+  const end = (isDone(t) && t.completed) ? t.completed : Date.now()/1000;
+  return Math.max(0, end - t.added);
+}
+function elapsedHtml(t,done){
+  const s = elapsedOf(t);
+  if(s==null) return `<div class="v z">—</div><div class="l">已下载</div>`;
+  return `<div class="v">${fmtT(s)}</div><div class="l">已下载</div>`;
+}
 function etaHtml(t,done){
   if(done) return `<div class="v ok">✓</div><div class="l">已完成</div>`;
   if(t.need_select) return `<div class="v z">—</div><div class="l">等你选文件</div>`;
@@ -123,6 +135,7 @@ let sortK='added', sortD=-1;
 try{ const sv=JSON.parse(localStorage.getItem('koi_sort')||'null'); if(sv){sortK=sv.k;sortD=sv.d} }catch(e){}
 const SORT_VAL={
   name:t=>t.name.toLowerCase(), progress:t=>t.progress, size:t=>t.size||0, added:t=>t.added||0,
+  elapsed:t=>elapsedOf(t)??-1,                                                   // 下了多久
   eta:t=>isDone(t)?Infinity:(t.paused||t.queued||t.eta==null)?Infinity-1:t.eta,   // 快下完的排前面，没在动的排后面
   down:t=>(t.down||0)*1e6+(t.up||0),                                             // 先按下载速度，再按上传速度
   // 完成时间：已完成的用实际完成时间，没下完的用「现在 + 剩余时间」预计完成时间，没在动的排最后
